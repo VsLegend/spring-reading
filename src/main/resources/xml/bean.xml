@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+	http://www.springframework.org/schema/context
+	http://www.springframework.org/schema/context/spring-context-4.2.xsd">
+
+    <!-- 注解依赖扫描 加载@Component等注解标注的bean 这样不用在下面添加bean标签来手动生成bean实例-->
+    <context:component-scan base-package="com.example.springreading"/>
+
+    <!-- The request log out   -->
+    <bean id="businessService" class="com.example.springreading.service.BusinessServiceImpl">
+        <constructor-arg index="0" value="XmlBean">
+        </constructor-arg>
+    </bean>
+
+</beans>
