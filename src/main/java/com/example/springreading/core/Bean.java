@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Bean的扫描和管理
+ * Bean的扫描、装配、注册、实例化流程
  *
  * @author Wang Junwei
  * @date 2023/10/18 10:32
