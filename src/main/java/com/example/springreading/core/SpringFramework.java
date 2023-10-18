@@ -14,17 +14,24 @@ import org.springframework.context.support.AbstractXmlApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
 /**
- * @Author Wang Junwei
- * @Date 2023/2/10 15:15
- * @Description Spring框架
+ * Spring 整体框架
+ *
+ * @author Wang Junwei
+ * @date 2023/10/18 10:32
  */
 public class SpringFramework {
+
+    public static void main(String[] args) {
+        SpringFramework springFramework  = new SpringFramework();
+        springFramework.process();
+    }
 
     /**
      * 容器加载bean的过程
@@ -55,7 +62,7 @@ public class SpringFramework {
 
 
         // 把bean封装为一个bean定义
-        BeanDefinition businessServiceBean = beanDefinition();
+        BeanDefinition businessServiceBean = beanDefinition(BusinessService.class);
 
         // 将bean定义注册到容器中
         defaultListableBeanFactory.registerBeanDefinition("businessService", businessServiceBean);
@@ -70,6 +77,7 @@ public class SpringFramework {
      * @see AbstractXmlApplicationContext#loadBeanDefinitions(org.springframework.beans.factory.support.DefaultListableBeanFactory)
      */
     public void beanDefinitionReader(BeanDefinitionRegistry registry) {
+        // 接口定义，下面两个类是其实现
         BeanDefinitionReader beanDefinitionReader;
         // Properties文件扫描器，5.3被弃用
         PropertiesBeanDefinitionReader propertiesBeanDefinitionReader;
@@ -82,8 +90,8 @@ public class SpringFramework {
     /**
      * BeanDefinition中的对bean的设置
      */
-    public RootBeanDefinition beanDefinition() {
-        RootBeanDefinition beanDefinition = new RootBeanDefinition(BusinessService.class);
+    public RootBeanDefinition beanDefinition(@Nullable Class<?> beanClass) {
+        RootBeanDefinition beanDefinition = new RootBeanDefinition(beanClass);
         // 懒加载 @Lazy(value = false)
         beanDefinition.setLazyInit(false);
         // 作用范围 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
