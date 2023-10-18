@@ -72,20 +72,18 @@ public class Bean {
         ScannedGenericBeanDefinition beanDefinition = new ScannedGenericBeanDefinition(metadataReader);
 
 
-        // 5. 包装bean
+        // 5. 装配bean
         // scanner.doScan(basePackages)
         // 6. 作用域解析，通过解析注解内容，非注解注入类或无注解时为默认配置
         // @Scope(value = "singleton", proxyMode = ScopedProxyMode.DEFAULT)
         // scanner.scopeMetadataResolver.resolveScopeMetadata(candidate)
         ScopeMetadataResolver scopeMetadataResolver = new AnnotationScopeMetadataResolver();
         ScopeMetadata scopeMetadata = scopeMetadataResolver.resolveScopeMetadata(beanDefinition);
-
         // 读取注解
 //        AnnotatedBeanDefinition annDef = (AnnotatedBeanDefinition) beanDefinition;
 //        AnnotationAttributes attributes = AnnotationConfigUtils.attributesFor(annDef.getMetadata(), Scope.class);
 //        scopeMetadata.setScopeName(attributes.getString("value"));
 //        scopeMetadata.setScopedProxyMode(attributes.getEnum("proxyMode"));
-
         // 7. 设置bean的实例名称：beanName
         // 通过Component和其子注解的value来获取bean名
         // @Component(value = "bean")
@@ -96,6 +94,8 @@ public class Bean {
         // 8. 加载bean通用注解
         // @Lazy Primary DependsOn Role Description
         AnnotationConfigUtils.processCommonDefinitionAnnotations(beanDefinition);
+
+
         // 9. 校验beanName是否已被注册
         // scanner.checkCandidate(beanName, beanDefinition)
         boolean containsBeanDefinition = registry.containsBeanDefinition(beanName);
@@ -107,6 +107,7 @@ public class Bean {
         Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(256);
         // 10. 将bean交由BeanDefinitionHolder持有
         BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(beanDefinition, beanName);
+
 
         // 11. 将该bean注册registry
         BeanDefinitionReaderUtils.registerBeanDefinition(definitionHolder, registry);
