@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @DependsOn
 @Primary
 @Description(value = "Description of bean definition")
-@Component(value = "bus")
+@Component(value = "businessService")
 @Scope(value = "singleton", proxyMode = ScopedProxyMode.DEFAULT)
 public class BusinessServiceImpl implements BusinessService {
 
