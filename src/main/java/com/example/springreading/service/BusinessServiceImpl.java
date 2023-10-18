@@ -1,7 +1,6 @@
 package com.example.springreading.service;
 
-import org.springframework.context.annotation.Scope;
-import org.springframework.context.annotation.ScopedProxyMode;
+import org.springframework.context.annotation.*;
 import org.springframework.stereotype.Component;
 
 /**
@@ -9,6 +8,10 @@ import org.springframework.stereotype.Component;
  * @Date 2023/2/10 16:30
  * @Description
  */
+@Lazy(value = false)
+@DependsOn
+@Primary
+@Description(value = "Description of bean definition")
 @Component(value = "bus")
 @Scope(value = "singleton", proxyMode = ScopedProxyMode.DEFAULT)
 public class BusinessServiceImpl implements BusinessService {
