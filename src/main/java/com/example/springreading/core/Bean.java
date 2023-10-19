@@ -3,10 +3,7 @@ package com.example.springreading.core;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
-import org.springframework.beans.factory.support.BeanDefinitionReaderUtils;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.BeanNameGenerator;
-import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.beans.factory.support.*;
 import org.springframework.context.annotation.*;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.core.annotation.AnnotationAttributes;
@@ -54,6 +51,9 @@ public class Bean {
      * @param registry
      */
     public void processOfScan(AnnotationConfigApplicationContext registry, String[] basePackages) throws IOException {
+        // reader是手动将类注册为Bean对象
+        AnnotatedBeanDefinitionReader reader = new AnnotatedBeanDefinitionReader(registry);
+        // scanner则是批量扫描类，然后将其注册为Bean对象
         ClassPathBeanDefinitionScanner scanner = new ClassPathBeanDefinitionScanner(registry);
         // 1. 扫描多个包下的类
         int scan = scanner.scan(basePackages);
@@ -64,7 +64,8 @@ public class Bean {
         Set<BeanDefinition> candidates = scanner.findCandidateComponents(basePackages[0]);
         // 3. 加载每一个class资源
         // resource = scanner.getResourcePatternResolver().getResources(packageSearchPath)
-        String packageSearchPath = "classpath*:" + "com/example/springreading/service/BusinessServiceImpl.class";
+        // String packageSearchPath = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX + resolveBasePackage(basePackage) + '/' + this.resourcePattern;
+        String packageSearchPath = "classpath*:" + "com/example/springreading/service" + "/" + "BusinessServiceImpl.class";
         ResourcePatternResolver resourcePatternResolver = new PathMatchingResourcePatternResolver();
         Resource[] resources = resourcePatternResolver.getResources(packageSearchPath);
         MetadataReader metadataReader = scanner.getMetadataReaderFactory().getMetadataReader(resources[0]);
@@ -102,9 +103,9 @@ public class Bean {
         // 内部执行
         registry.getBeanFactory().containsBeanDefinition(beanName);
         // registry.getBeanFactory()
-        DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
         // containsBeanDefinition(beanName)
-        Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(256);
+        // beanFactory内部维护了一个map容器存放bean定义：Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(256);
+        DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
         // 10. 将bean交由BeanDefinitionHolder持有
         BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(beanDefinition, beanName);
 

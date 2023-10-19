@@ -55,10 +55,14 @@ public class SpringFramework {
 
 
         // 容器中，封装bean的实体定义与实现类
+        // bean定义的顶层接口
         BeanDefinition beanDefinition;
         AbstractBeanDefinition abstractBeanDefinition;
+        // AbstractBeanDefinition子类
         RootBeanDefinition rootBeanDefinition;
         ChildBeanDefinition childBeanDefinition;
+        GenericBeanDefinition genericBeanDefinition;
+        ScannedGenericBeanDefinition scannedGenericBeanDefinition;
 
 
         // 把bean封装为一个bean定义
@@ -75,15 +79,19 @@ public class SpringFramework {
      * BeanDefinitionReader是实际解析和装配BeanDefinition的类，BeanDefinitionRegistry只是将解析的数据保存而已
      *
      * @see AbstractXmlApplicationContext#loadBeanDefinitions(org.springframework.beans.factory.support.DefaultListableBeanFactory)
+     * @see AnnotationConfigApplicationContext#AnnotationConfigApplicationContext()
      */
     public void beanDefinitionReader(BeanDefinitionRegistry registry) {
         // 接口定义，下面两个类是其实现
         BeanDefinitionReader beanDefinitionReader;
         // Properties文件扫描器，5.3被弃用
         PropertiesBeanDefinitionReader propertiesBeanDefinitionReader;
-        // xml文件扫描器
+        // xml文件扫描器，是ClassPathXmlApplicationContext进行BeanDefinition自动扫描和装配的工具
         XmlBeanDefinitionReader xmlBeanDefinitionReader = new XmlBeanDefinitionReader(registry);
         xmlBeanDefinitionReader.loadBeanDefinitions("classpath:/xml/bean.xml");
+
+        // 注解文件扫描器，是AnnotationConfigApplicationContext进行BeanDefinition自动扫描和装配的工具
+        ClassPathBeanDefinitionScanner scanner = new ClassPathBeanDefinitionScanner(new AnnotationConfigApplicationContext("com.example.springreading"));
     }
 
 
@@ -91,6 +99,7 @@ public class SpringFramework {
      * BeanDefinition中的对bean的设置
      */
     public RootBeanDefinition beanDefinition(@Nullable Class<?> beanClass) {
+        // 根据反射获取类型元数据信息
         RootBeanDefinition beanDefinition = new RootBeanDefinition(beanClass);
         // 懒加载 @Lazy(value = false)
         beanDefinition.setLazyInit(false);
