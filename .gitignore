@@ -5,7 +5,6 @@ test/
 .project
 .settings/
 .classpath
-apks/
 *.log.*
 *.log
 out/
@@ -14,26 +13,3 @@ test.*
 local_develop/
 *.iml
 */*.iml
-web-cloud-assets/st/
-#local_develop/
-web-cloud-assets/#local_develop/
-/web-cloud-assets/z
-/web-cloud-assets/wm0/
-pipihealth.ipr
-pipihealth.iws
-scripts/
-Spring-Boot-master/
-image-java-sdk-v2.0-master/
-.metadata/
-.recommenders/
-Servers/Tomcat v7.0 Server at localhost-config/tomcat-users.xml
-Servers/Tomcat v7.0 Server at localhost-config/server.xml
-Servers/Tomcat v7.0 Server at localhost-config/context.xml
-Servers/Tomcat v7.0 Server at localhost-config/catalina.policy
-Servers/Tomcat v7.0 Server at localhost-config/web.xml
-Servers/Tomcat v7.0 Server at localhost-config/catalina.properties
-base/
-Servers/
-cloud-publichealth/src/main/java/cn/com/twosnails/publichealth/TestTread.java
-/remote-source-local/
-/.idea/

@@ -28,8 +28,10 @@ import org.springframework.stereotype.Service;
  */
 public class SpringFramework {
 
+    public static String[] basePackages = new String[]{"com.example.springreading"};
+
     public static void main(String[] args) {
-        SpringFramework springFramework  = new SpringFramework();
+        SpringFramework springFramework = new SpringFramework();
         springFramework.process();
     }
 
@@ -46,10 +48,12 @@ public class SpringFramework {
 
         // BeanFactory的基础实现类 不具备自动扫描和装配的功能
         DefaultListableBeanFactory defaultListableBeanFactory = new DefaultListableBeanFactory();
+        // ApplicationContext的基础实现类之一 可以进行自动扫描和装配
+        AnnotationConfigApplicationContext applicationContext1;
 
         // spring通过两种方式自动扫描和管理bean： 1.注解扫描  2.xml配置扫描
         // 1.注解扫描 @Component @Repository @Controller @Service
-        AnnotationConfigApplicationContext annotationConfigApplicationContext = new AnnotationConfigApplicationContext("com.example.springreading");
+        AnnotationConfigApplicationContext annotationConfigApplicationContext = new AnnotationConfigApplicationContext(basePackages);
         // 2.xml配置文件扫描 通过标签扫描
         ClassPathXmlApplicationContext classPathXmlApplicationContext = new ClassPathXmlApplicationContext("/xml");
 
@@ -67,7 +71,6 @@ public class SpringFramework {
 
         // 把bean封装为一个bean定义
         BeanDefinition businessServiceBean = beanDefinition(BusinessService.class);
-
         // 将bean定义注册到容器中
         defaultListableBeanFactory.registerBeanDefinition("businessService", businessServiceBean);
 
@@ -78,7 +81,7 @@ public class SpringFramework {
      * 自动扫描、装配、注册bean，最终将其封装为BeanDefinition
      * BeanDefinitionReader是实际解析和装配BeanDefinition的类，BeanDefinitionRegistry只是将解析的数据保存而已
      *
-     * @see AbstractXmlApplicationContext#loadBeanDefinitions(org.springframework.beans.factory.support.DefaultListableBeanFactory)
+     * @see AbstractXmlApplicationContext##loadBeanDefinitions(org.springframework.beans.factory.support.DefaultListableBeanFactory)
      * @see AnnotationConfigApplicationContext#AnnotationConfigApplicationContext()
      */
     public void beanDefinitionReader(BeanDefinitionRegistry registry) {

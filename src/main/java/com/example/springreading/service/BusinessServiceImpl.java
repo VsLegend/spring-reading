@@ -1,6 +1,7 @@
 package com.example.springreading.service;
 
 import org.springframework.context.annotation.*;
+import org.springframework.core.annotation.AliasFor;
 import org.springframework.stereotype.Component;
 
 /**

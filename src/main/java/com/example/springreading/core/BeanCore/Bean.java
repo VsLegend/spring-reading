@@ -1,14 +1,12 @@
-package com.example.springreading.core;
+package com.example.springreading.core.BeanCore;
 
-import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.*;
 import org.springframework.context.annotation.*;
+import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.springframework.core.annotation.AnnotationAttributes;
-import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
@@ -17,10 +15,8 @@ import org.springframework.util.ClassUtils;
 
 import java.beans.Introspector;
 import java.io.IOException;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Bean的扫描、装配、注册、实例化流程
@@ -40,9 +36,39 @@ public class Bean {
         // spring通过两种方式自动扫描和管理bean： 1.注解扫描  2.xml配置扫描
         // 1.注解扫描 @Component @Repository @Controller @Service等等Component注解
         AnnotationConfigApplicationContext annotationConfigApplicationContext = new AnnotationConfigApplicationContext(basePackages);
+
         // 2.xml配置文件扫描 通过标签扫描
         ClassPathXmlApplicationContext classPathXmlApplicationContext = new ClassPathXmlApplicationContext("/xml/bean.xml");
         processOfScan(annotationConfigApplicationContext, basePackages);
+    }
+
+    /**
+     * 实例化对象（单例）
+     * 原型对象会在每次调用时实例一个对象，所以这里不讨论原型Bean的实例化
+     * @param registry
+     */
+    public void instantiateBean(AnnotationConfigApplicationContext registry) {
+
+        // 从配置文件、xml、properties文件等持久化文件中，加载或刷新相关配置，如实例化对象
+        registry.refresh();
+
+
+        // 1. 准备阶段
+        // 每次加载或刷新配置时，需要先清理所有单例对象。以确保所有对象都能被顺利的实例化
+        // 2. 刷新
+        // 当然AnnotationConfigApplicationContext内部的刷新代码没有任何清理操作，因为其内部仅维护了单例beanFactory，不需要对该容器进行清理
+        // ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
+        // GenericApplicationContext.beanFactory
+        ConfigurableListableBeanFactory beanFactory = new DefaultListableBeanFactory();
+        // 有关清理的代码实现可以参考ClassPathXmlApplicationContext容器，它的清理逻辑在其父类AbstractRefreshableApplicationContext#refreshBeanFactory中实现
+        // 其它流程暂不考虑：Bean的代理、包装、工厂、处理器、事情，特殊上下文处理等等
+
+
+        // 3. 实例化
+        // registry.finishBeanFactoryInitialization(beanFactory)
+        // 这里仅实例化非延迟加载的类（当然，如果一个懒加载类被一个非懒加载类依赖，那么该类依旧会在这里被实例化）
+
+        beanFactory.preInstantiateSingletons();
     }
 
     /**
