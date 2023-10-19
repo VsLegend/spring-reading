@@ -65,10 +65,14 @@ public class Bean {
 
 
         // 3. 实例化
+        // 这个方法会实例化所有非懒加载的类（当然，如果一个懒加载类被一个非懒加载类依赖，那么该类依旧会在这里被实例化）
         // registry.finishBeanFactoryInitialization(beanFactory)
-        // 这里仅实例化非延迟加载的类（当然，如果一个懒加载类被一个非懒加载类依赖，那么该类依旧会在这里被实例化）
-
         beanFactory.preInstantiateSingletons();
+        // 4. 获取已注册的bean名字列表
+        // beanFactory.beanDefinitionNames
+        // 5. 通过beanName得到关联的bean定义BeanDefinition
+        // RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
+
     }
 
     /**
@@ -77,9 +81,9 @@ public class Bean {
      * @param registry
      */
     public void processOfScan(AnnotationConfigApplicationContext registry, String[] basePackages) throws IOException {
-        // reader是手动将类注册为Bean对象
+        // reader通过类型信息注册BeanDefinition
         AnnotatedBeanDefinitionReader reader = new AnnotatedBeanDefinitionReader(registry);
-        // scanner则是批量扫描类，然后将其注册为Bean对象
+        // scanner通过扫描包注册BeanDefinition
         ClassPathBeanDefinitionScanner scanner = new ClassPathBeanDefinitionScanner(registry);
         // 1. 扫描多个包下的类
         int scan = scanner.scan(basePackages);
