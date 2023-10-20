@@ -1,8 +1,9 @@
 package com.example.springreading.core.BeanCore;
 
 import com.example.springreading.core.SpringFramework;
-import com.example.springreading.core.postProcessors.ExtraPropertyPostProcessor;
-import com.example.springreading.service.BeanService;
+import com.example.springreading.scanPackages.service.BeanService;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.CustomAutowireConfigurer;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -10,11 +11,10 @@ import org.springframework.beans.factory.config.*;
 import org.springframework.beans.factory.support.*;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.*;
+import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
-import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.core.metrics.StartupStep;
 import org.springframework.core.type.classreading.MetadataReader;
@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class BeanContext extends AnnotationConfigApplicationContext {
 
+    private final Log logger = LogFactory.getLog(getClass());
     private final String[] basePackages = SpringFramework.basePackages;
 
     /**
@@ -70,10 +71,11 @@ public class BeanContext extends AnnotationConfigApplicationContext {
     /**
      * 实例化对象（单例）
      * 原型对象会在每次调用时实例一个对象，所以这里不讨论原型Bean的实例化
+     *
+     * @see AbstractApplicationContext#refresh()
      */
     public void instantiateBean() {
         // 从配置文件、xml、properties文件等持久化文件中，加载或刷新相关配置，如实例化对象
-//        refresh();
         prepareRefresh();
 
 
@@ -83,18 +85,16 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // 当然AnnotationConfigApplicationContext内部的刷新代码没有任何清理操作，因为其内部仅维护了单例beanFactory，不需要对该容器进行清理
         ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
         prepareBeanFactory(beanFactory);
-//        ConfigurableListableBeanFactory beanFactory = getBeanFactory();
         // 有关清理的代码实现可以参考ClassPathXmlApplicationContext容器，它的清理逻辑在其父类AbstractRefreshableApplicationContext#refreshBeanFactory中实现
         // 其它流程暂不考虑：Bean的代理、包装、工厂、处理器、事情，特殊上下文处理等等
 
-        // 3.Bean后置处理器
-        // 为beanFactory设置注册后的后置处理器，做一些实例化前的预处理操作，比如修改BeanDefinition内容、新注册BeanDefinition等等
+        // 3.注册与执行Bean后置处理器
+        // 为beanFactory设置后置处理器，做一些注册后实例化前的预处理操作，比如修改BeanDefinition内容、新注册BeanDefinition等等
         StartupStep beanPostProcess = getApplicationStartup().start("spring.context.beans.post-process");
         postProcessBeanFactory(beanFactory);
         // 这些BeanFactoryPostProcessor处理器不由注解容器（AnnotationConfigApplicationContext）实例化，一般通过配置类容器（ConfigurableApplicationContext）进行实例化
         ConfigurableApplicationContext configurableApplicationContext;
         // 容器通过@Order注解来选择BeanFactoryPostProcessor的执行顺序，或实现org.springframework.core.Ordered类也可以
-        // 我们通过手动添加的后置处理器，是根据添加顺序执行的
         List<BeanFactoryPostProcessor> beanFactoryPostProcessors = getBeanFactoryPostProcessors();
         // 4. 在容器中执行BeanFactoryPostProcessor
         // 允许BeanFactoryPostProcessor自定义修改应用程序上下文的bean定义，调整上下文的底层beanFactory中的bean属性值。
@@ -106,12 +106,24 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         addBeanFactoryPostProcessor(customAutowireConfigurer);
         addBeanFactoryPostProcessor(new PropertySourcesPlaceholderConfigurer());
         // BeanDefinitionRegistryPostProcessor将于BeanFactoryPostProcessor之前进行，它注册新的BeanDefinition或修改的BeanDefinition，最终可以影响到BeanFactoryPostProcessor的执行
-//        BeanDefinitionRegistryPostProcessor beanDefinitionRegistryPostProcessor = null;
-//        addBeanFactoryPostProcessor(beanDefinitionRegistryPostProcessor);
-        // 5. 执行后处理器
-        // PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors(beanFactory, getBeanFactoryPostProcessors());
+        // - @Configuration：ConfigurationClassPostProcessor
+        BeanDefinitionRegistryPostProcessor beanDefinitionRegistryPostProcessor = new ConfigurationClassPostProcessor();
+        addBeanFactoryPostProcessor(beanDefinitionRegistryPostProcessor);
+        // 5. 执行后置处理器
         invokeBeanFactoryPostProcessors(beanFactory);
+        // 后置处理器的执行顺序为：
+        // - BeanDefinitionRegistryPostProcessors实现PriorityOrdered的处理器、实现Ordered的处理器、剩余处理器
+        // - BeanFactoryPostProcessors实现PriorityOrdered的处理器、实现Ordered的处理器、剩余处理器
+        // 6. 清理容器中缓存的合并Bean定义
+        // 后置处理器执行完毕后，很多BeanDefinition的元数据都可能被修改，因此需要清理这些缓存
+        beanFactory.clearMetadataCache();
+
+
+        // 7. 注册Bean后置处理器
         registerBeanPostProcessors(beanFactory);
+
+
+
         beanPostProcess.end();
 
 
@@ -130,9 +142,10 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
 
         BeanService bean = getBean(BeanService.class);
-        String name = bean.getName();
         BeanService constructorBeanService = getBean("constructorBeanService", BeanService.class);
-        String name1 = constructorBeanService.getName();
+        logger.debug("Get Bean by type: " + bean.getName());
+        logger.debug("Get Bean by name with type: " + constructorBeanService.getName());
+
     }
 
     /**
@@ -154,7 +167,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // 3. 加载每一个class资源
         // resource = scanner.getResourcePatternResolver().getResources(packageSearchPath)
         // String packageSearchPath = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX + resolveBasePackage(basePackage) + '/' + this.resourcePattern;
-        String packageSearchPath = "classpath*:" + "com/example/springreading/service" + "/" + "BeanServiceImpl.class";
+        String packageSearchPath = "classpath*:" + "com/example/springreading/scanPackages/service" + "/" + "BeanServiceImpl.class";
         ResourcePatternResolver resourcePatternResolver = getResourcePatternResolver();
         Resource[] resources = resourcePatternResolver.getResources(packageSearchPath);
         MetadataReader metadataReader = scanner.getMetadataReaderFactory().getMetadataReader(resources[0]);

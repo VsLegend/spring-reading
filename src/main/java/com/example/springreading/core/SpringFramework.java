@@ -1,6 +1,6 @@
 package com.example.springreading.core;
 
-import com.example.springreading.service.BeanService;
+import com.example.springreading.scanPackages.service.BeanService;
 import org.springframework.beans.MutablePropertyValues;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -22,7 +22,7 @@ import org.springframework.lang.Nullable;
  */
 public class SpringFramework {
 
-    public static String[] basePackages = new String[]{"com.example.springreading.service"};
+    public static String[] basePackages = new String[]{"com.example.springreading.scanPackages"};
 
 
     public static void main(String[] args) {

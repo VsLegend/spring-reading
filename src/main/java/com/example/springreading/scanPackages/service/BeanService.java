@@ -1,4 +1,4 @@
-package com.example.springreading.service;
+package com.example.springreading.scanPackages.service;
 
 /**
  * @Author Wang Junwei
