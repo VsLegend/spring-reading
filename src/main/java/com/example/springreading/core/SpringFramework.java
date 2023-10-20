@@ -1,6 +1,6 @@
 package com.example.springreading.core;
 
-import com.example.springreading.service.BusinessService;
+import com.example.springreading.service.BeanService;
 import org.springframework.beans.MutablePropertyValues;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -12,13 +12,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.*;
 import org.springframework.context.support.AbstractXmlApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
 import org.springframework.lang.Nullable;
-import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Controller;
-import org.springframework.stereotype.Repository;
-import org.springframework.stereotype.Service;
 
 /**
  * Spring 整体框架
@@ -28,7 +22,8 @@ import org.springframework.stereotype.Service;
  */
 public class SpringFramework {
 
-    public static String[] basePackages = new String[]{"com.example.springreading"};
+    public static String[] basePackages = new String[]{"com.example.springreading.service"};
+
 
     public static void main(String[] args) {
         SpringFramework springFramework = new SpringFramework();
@@ -70,7 +65,7 @@ public class SpringFramework {
 
 
         // 把bean封装为一个bean定义
-        BeanDefinition businessServiceBean = beanDefinition(BusinessService.class);
+        BeanDefinition businessServiceBean = beanDefinition(BeanService.class);
         // 将bean定义注册到容器中
         defaultListableBeanFactory.registerBeanDefinition("businessService", businessServiceBean);
 

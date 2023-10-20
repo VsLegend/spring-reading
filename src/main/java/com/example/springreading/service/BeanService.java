@@ -5,7 +5,7 @@ package com.example.springreading.service;
  * @Date 2023/2/10 16:07
  * @Description
  */
-public interface BusinessService {
+public interface BeanService {
 
     String getName();
 }

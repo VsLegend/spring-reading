@@ -1,7 +1,9 @@
 package com.example.springreading.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
-import org.springframework.core.annotation.AliasFor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -13,16 +15,17 @@ import org.springframework.stereotype.Component;
 @DependsOn
 @Primary
 @Description(value = "Description of bean definition")
-@Component(value = "businessService")
+@Component(value = "beanService")
 @Scope(value = "singleton", proxyMode = ScopedProxyMode.DEFAULT)
-public class BusinessServiceImpl implements BusinessService {
+public class BeanServiceImpl implements BeanService {
 
     private String name;
-    private String value;
 
-    public BusinessServiceImpl() {}
+    public BeanServiceImpl() {
+        name = BeanServiceImpl.class.getName();
+    }
 
-    public BusinessServiceImpl(String name) {
+    public BeanServiceImpl(String name) {
         this.name = name;
     }
 
