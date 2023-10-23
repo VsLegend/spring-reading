@@ -4,9 +4,7 @@ import com.example.springreading.core.SpringFramework;
 import com.example.springreading.scanPackages.service.BeanService;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
-import org.springframework.beans.factory.annotation.CustomAutowireConfigurer;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.*;
 import org.springframework.beans.factory.config.*;
 import org.springframework.beans.factory.support.*;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -26,7 +24,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Bean的扫描、装配、注册、实例化流程
+ * Bean的扫描、装配、注册、前置处理、实例化流程
  *
  * @author Wang Junwei
  * @date 2023/10/18 10:32
@@ -52,6 +50,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
 //        context();
         BeanContext beanContext = new BeanContext();
         beanContext.processOfScan();
+        beanContext.refresh();
         beanContext.instantiateBean();
     }
 
@@ -69,77 +68,98 @@ public class BeanContext extends AnnotationConfigApplicationContext {
     }
 
     /**
-     * 实例化对象（单例）
+     * 实例化：实例化准备以及实例化对象（单例）
      * 原型对象会在每次调用时实例一个对象，所以这里不讨论原型Bean的实例化
      *
      * @see AbstractApplicationContext#refresh()
      */
     public void instantiateBean() {
         // 从配置文件、xml、properties文件等持久化文件中，加载或刷新相关配置，如实例化对象
-        prepareRefresh();
-
-
         // 1. 准备阶段
         // 每次加载或刷新配置时，需要先清理所有单例对象。以确保所有对象都能被顺利的实例化
+        prepareRefresh();
         // 2. 刷新
-        // 当然AnnotationConfigApplicationContext内部的刷新代码没有任何清理操作，因为其内部仅维护了单例beanFactory，不需要对该容器进行清理
+        // 当然AnnotationConfigApplicationContext内部的刷新代码没有任何清理操作，因为该应用上下文仅允许执行一次刷新和实例化操作，并且其内部仅维护了单例beanFactory，不需要对该容器进行清理
+        // 有关清理的代码实现可以参考ClassPathXmlApplicationContext容器，它的清理逻辑在其父类AbstractRefreshableApplicationContext#refreshBeanFactory中实现
         ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
         prepareBeanFactory(beanFactory);
-        // 有关清理的代码实现可以参考ClassPathXmlApplicationContext容器，它的清理逻辑在其父类AbstractRefreshableApplicationContext#refreshBeanFactory中实现
-        // 其它流程暂不考虑：Bean的代理、包装、工厂、处理器、事情，特殊上下文处理等等
 
-        // 3.注册与执行Bean后置处理器
-        // 为beanFactory设置后置处理器，做一些注册后实例化前的预处理操作，比如修改BeanDefinition内容、新注册BeanDefinition等等
+
+        // 注册与执行后置处理器
         StartupStep beanPostProcess = getApplicationStartup().start("spring.context.beans.post-process");
+
+
+        // 3.注册与执行beanFactory容器后置处理器（BeanFactoryPostProcessor）
+        // 初始化完成后，为beanFactory设置后置处理器，做一些注册后实例化前的预处理操作，比如修改BeanDefinition内容、新注册BeanDefinition等等
         postProcessBeanFactory(beanFactory);
         // 这些BeanFactoryPostProcessor处理器不由注解容器（AnnotationConfigApplicationContext）实例化，一般通过配置类容器（ConfigurableApplicationContext）进行实例化
         ConfigurableApplicationContext configurableApplicationContext;
-        // 容器通过@Order注解来选择BeanFactoryPostProcessor的执行顺序，或实现org.springframework.core.Ordered类也可以
         List<BeanFactoryPostProcessor> beanFactoryPostProcessors = getBeanFactoryPostProcessors();
-        // 4. 在容器中执行BeanFactoryPostProcessor
-        // 允许BeanFactoryPostProcessor自定义修改应用程序上下文的bean定义，调整上下文的底层beanFactory中的bean属性值。
-        // Spring内部实现了很多修改BeanDefinition的类：
-        // - @Qualifier：CustomAutowireConfigurer
-        // - 占位符替换：从property文件（yml）、环境变量、系统变量读取值，来替换Class文件代码中的${...}声明变量，例如处理@Value的内容，PropertySourcesPlaceholderConfigurer（5.2前PropertyPlaceholderConfigurer）
+        // 4. 注册
+        // 允许BeanFactoryPostProcessor增加或修改应用程序上下文的bean定义，甚至是调整beanFactory容器中bean的属性值。
+        // Spring内部BeanFactoryPostProcessor的实现类例子：
+        // - CustomAutowireConfigurer：设置注入Bean的指定限定符（官方限定符注解@Qualifier）
+        // - PropertySourcesPlaceholderConfigurer（5.2前PropertyPlaceholderConfigurer）：占位符替换，从property文件（yml）、环境变量、系统变量读取值，来替换Class文件代码中的${...}声明变量，例如处理@Value的内容
         CustomAutowireConfigurer customAutowireConfigurer = new CustomAutowireConfigurer();
         customAutowireConfigurer.setCustomQualifierTypes(Collections.singleton(Qualifier.class));
         addBeanFactoryPostProcessor(customAutowireConfigurer);
         addBeanFactoryPostProcessor(new PropertySourcesPlaceholderConfigurer());
         // BeanDefinitionRegistryPostProcessor将于BeanFactoryPostProcessor之前进行，它注册新的BeanDefinition或修改的BeanDefinition，最终可以影响到BeanFactoryPostProcessor的执行
-        // - @Configuration：ConfigurationClassPostProcessor
+        // - ConfigurationClassPostProcessor：处理@Configuration注解标注的类，并将其设置为配置类
         BeanDefinitionRegistryPostProcessor beanDefinitionRegistryPostProcessor = new ConfigurationClassPostProcessor();
         addBeanFactoryPostProcessor(beanDefinitionRegistryPostProcessor);
-        // 5. 执行后置处理器
+        // 5. 执行
         invokeBeanFactoryPostProcessors(beanFactory);
-        // 后置处理器的执行顺序为：
-        // - BeanDefinitionRegistryPostProcessors实现PriorityOrdered的处理器、实现Ordered的处理器、剩余处理器
-        // - BeanFactoryPostProcessors实现PriorityOrdered的处理器、实现Ordered的处理器、剩余处理器
-        // 6. 清理容器中缓存的合并Bean定义
-        // 后置处理器执行完毕后，很多BeanDefinition的元数据都可能被修改，因此需要清理这些缓存
+        // BeanFactoryPostProcessor后置处理器执行的先后顺序为：
+        // - BeanDefinitionRegistryPostProcessors：1.实现PriorityOrdered的处理器、2.实现Ordered的处理器、3.剩余处理器
+        // - BeanFactoryPostProcessors：4.实现PriorityOrdered的处理器、5.实现Ordered的处理器、6.剩余处理器
+        // 6. 清理缓存
+        // 后置处理器执行完毕后，很多BeanDefinition的元数据都可能被修改，因此需要清理容器中缓存的相关Bean定义
         beanFactory.clearMetadataCache();
 
 
-        // 7. 注册Bean后置处理器
+        // 7. 注册Bean后置处理器（BeanPostProcessor）
+        // BeanFactoryPostProcessor能影响BeanDefinition，而BeanPostProcessor则能够影响BeanDefinition的实例化过程
         registerBeanPostProcessors(beanFactory);
+        // BeanPostProcessor与普通BeanDefinition初始化方式是相同的，beanFactory容器将会自动检测BeanPostProcessor类型的单例类，并将其注册到容器中
+        String[] postProcessorNames = beanFactory.getBeanNamesForType(BeanPostProcessor.class, true, false);
+        List<BeanPostProcessor> priorityOrderedPostProcessors = new ArrayList<>();
+        // 8. BeanPostProcessor注册
+        // BeanPostProcessor有两个方法：1. postProcessBeforeInitialization用于实例化前，如检查标记接口  2. postProcessAfterInitialization用于实例化后，如代理包装
+        // - ApplicationListenerDetector：为应用上下文注册事件监听器
+        // - AutowiredAnnotationBeanPostProcessor：注入处理器，一般用来处理被@Autowired、@Value、@Inject注解的类，同时支持自定义注解
+        BeanPostProcessor beanPostProcessor = new CommonAnnotationBeanPostProcessor();
+        // BeanPostProcessor后置处理器执行的先后顺序为：
+        // - BeanPostProcessor：1.实现PriorityOrdered的处理器、2.实现Ordered的处理器、3.剩余处理器
+        // - MergedBeanDefinitionPostProcessor：4. MergedBeanDefinitionPostProcessor类型的处理器
+        beanFactory.addBeanPostProcessor(beanPostProcessor);
+        // 9. 将上面处理器注册完成后，最后再注册一个后置处理器ApplicationListenerDetector
+        // 该处理器用来检测ApplicationListener类型的Bean，在该Bean实例化完成后，将其添加到应用上下文（ApplicationContext）中的事件监听器（ApplicationListener）链中
+        // 监听器这一节基本上与Bean实例化无关，监听器相关类后续再说
+        // beanFactory.addBeanPostProcessor(new ApplicationListenerDetector(this));
+        // 注意这里仅注册，相关的BeanPostProcessor类还没有实例化，也没法执行。
 
 
-
+        // 结束后置处理器操作
         beanPostProcess.end();
 
 
-        // 4. 实例化
+        // 10. 实例化
         // 这个方法会实例化所有非懒加载的类（当然，如果一个懒加载类被一个非懒加载类依赖，那么该类依旧会在这里被实例化）
         finishBeanFactoryInitialization(beanFactory);
-        // - 注入处理器：AutowiredAnnotationBeanPostProcessor
-
-
-        // 5. 这里会将当前保存的beanDefinitionMap创建一个Key的副本，实例化时是对该副本中bean定义进行实例化
+        // 11. 这里会将当前保存的beanDefinitionMap创建一个Key的副本，实例化时是对该副本中bean定义进行实例化
         beanFactory.freezeConfiguration();
+        // 执行Bean实例化方法
         beanFactory.preInstantiateSingletons();
-        // 4. 获取已注册的bean名字列表
+        // 12. 获取已注册的bean名字列表
         // beanFactory.beanDefinitionNames
         // 5. 通过beanName得到关联的bean定义BeanDefinition
         // RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
+
+        // 收尾工作
+        finishRefresh();
+
+
 
         BeanService bean = getBean(BeanService.class);
         BeanService constructorBeanService = getBean("constructorBeanService", BeanService.class);
@@ -149,7 +169,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
     }
 
     /**
-     * 包扫描过程，通过注解扫描（简化，保留关键步骤）
+     * 初始化：包扫描过程，通过注解扫描，然后注册至beanFactory
      */
     public void processOfScan() throws IOException {
         // reader通过类型信息注册BeanDefinition

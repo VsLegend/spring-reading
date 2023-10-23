@@ -3,6 +3,7 @@ package com.example.springreading.scanPackages.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 /**
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component;
  * @Date 2023/2/10 16:30
  * @Description
  */
+@Lazy(value = false)
 @Component(value = "constructorBeanService")
 public class ConstructorBeanServiceImpl implements BeanService {
 
@@ -24,6 +26,6 @@ public class ConstructorBeanServiceImpl implements BeanService {
 
     @Override
     public String getName() {
-        return name;
+        return name + beanService.getName();
     }
 }

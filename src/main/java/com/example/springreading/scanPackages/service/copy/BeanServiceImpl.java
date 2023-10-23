@@ -1,18 +1,17 @@
-package com.example.springreading.scanPackages.service;
+package com.example.springreading.scanPackages.service.copy;
 
+import com.example.springreading.scanPackages.service.BeanService;
 import org.springframework.context.annotation.*;
 import org.springframework.stereotype.Component;
 
 /**
- * @Author Wang Junwei
- * @Date 2023/2/10 16:30
- * @Description
+ * 通过类型获取Bean且有多个Bean的类型相同，注入的依赖优先选择@Primary注解注释的，都没约@Primary注解就会报错
+ *
+ * @see org.springframework.beans.factory.NoUniqueBeanDefinitionException
  */
-@Lazy
-@DependsOn
-@Description(value = "Description of bean definition")
-@Component(value = "beanService")
-@Scope(value = "singleton", proxyMode = ScopedProxyMode.DEFAULT)
+
+@Primary
+@Component
 public class BeanServiceImpl implements BeanService {
 
     private String name;
