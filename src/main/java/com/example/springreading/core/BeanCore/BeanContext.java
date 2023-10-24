@@ -61,6 +61,10 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         public Object getSingleton(String beanName, boolean allowEarlyReference) {
             return super.getSingleton(beanName, allowEarlyReference);
         }
+
+        public RootBeanDefinition getMergedLocalBeanDefinition(String beanName) throws BeansException{
+            return super.getMergedLocalBeanDefinition(beanName);
+        }
     }
 
     /**
@@ -95,24 +99,91 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // BeanDefinition合并层级关系，将父子类实例分开，这里只保存最顶层的BeanDefinition，实例化时也是从最顶层开始实例化
         final Map<String, RootBeanDefinition> mergedBeanDefinitions = new ConcurrentHashMap<>(256);
 
-        final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
-
-        final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
-
-        final Map<String, Object> earlySingletonObjects = new ConcurrentHashMap<>(16);
-
         final Set<String> registeredSingletons = new LinkedHashSet<>(256);
 
         // Names of beans that are currently in creation.
-        final Set<String> singletonsCurrentlyInCreation =
-                Collections.newSetFromMap(new ConcurrentHashMap<>(16));
+        final Set<String> singletonsCurrentlyInCreation = Collections.newSetFromMap(new ConcurrentHashMap<>(16));
         // Names of beans currently excluded from in creation checks.
-        final Set<String> inCreationCheckExclusions =
-                Collections.newSetFromMap(new ConcurrentHashMap<>(16));
+        final Set<String> inCreationCheckExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>(16));
     }
 
     /**
-     * 实例化：实例化准备以及实例化对象（单例）
+     * 实例化核心代码
+     */
+    public void getBeanCore() {
+        String beanName = "beanService";
+
+
+        // 1. 实例化核心代码：getBean(beanName)
+        // getBean() 核心逻辑 doGetBean()
+        Object doGetBean = beanFactory.doGetBean(beanName, null, null, false);
+
+
+        // 2. 获取规范的Bean名称，把可能是工厂对象的名称、或对象别名名称转为真正的BeanName（@Component-value）
+        beanFactory.transformedBeanName(beanName);
+
+
+        // 3. 三级缓存
+        // 我们注册合并好的Bean定义，等待被实例化
+        final Map<String, RootBeanDefinition> mergedBeanDefinitions = new ConcurrentHashMap<>(256);
+        // Bean实例缓存（已实例化）Cache of singleton objects: bean name to bean instance.
+        final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
+        final Set<String> singletonsCurrentlyInCreation =
+                Collections.newSetFromMap(new ConcurrentHashMap<>(16));
+        // Bean对象工厂实例缓存（已实例化）Cache of singleton factories: bean name to ObjectFactory.
+        final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
+        // Bean正在实例化缓存（实例化中）Cache of early singleton objects: bean name to bean instance.
+        final Map<String, Object> earlySingletonObjects = new ConcurrentHashMap<>(16);
+        // 为什么国内都叫三级缓存呢？因为所有doGetBean()方法获取Bean实例前，会尝试从这个三个缓存中获取Bean实例，如果能获取到就直接返回该实例了
+        // 三级缓存为什么能一定程度解决循环依赖问题呢？
+        boolean allowEarlyReference = true;
+        Object sharedInstance = beanFactory.getSingleton(beanName);
+        Object singleton = beanFactory.getSingleton(beanName, allowEarlyReference);
+        // 4. 一级缓存
+        // 后续的实例化过程中，有很多双检机制，作用都是寻求线程安全-效率的平衡点
+        Object singletonObject = singletonObjects.get(beanName);
+        if (singletonObject == null && beanFactory.isSingletonCurrentlyInCreation(beanName)) {
+            // 5. 二级缓存
+            singletonObject = earlySingletonObjects.get(beanName);
+            if (singletonObject == null && allowEarlyReference) {
+                // 加锁，避免静态条件
+                synchronized (singletonObjects) {
+                    // 一级缓存的双重校验
+                    singletonObject = singletonObjects.get(beanName);
+                    if (singletonObject == null) {
+                        // 二级缓存的双重校验
+                        singletonObject = earlySingletonObjects.get(beanName);
+                        if (singletonObject == null) {
+                            // 6. 三级缓存
+                            ObjectFactory<?> singletonFactory = singletonFactories.get(beanName);
+                            if (singletonFactory != null) {
+                                singletonObject = singletonFactory.getObject();
+                                // 通过三级缓存获取实例后，要将去同步到二级缓存中
+                                earlySingletonObjects.put(beanName, singletonObject);
+                                singletonFactories.remove(beanName);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        // 7. 先实例化依赖的组件（@DependsOn）
+        // 要注意一下，如果两个或多个类之间，依赖的组件形成了一个循环，那么就会产生循环依赖问题。BeanCreationException
+        // 与属性依赖不同，组件之间的依赖是无法解决循环依赖的，所以需要注意@DependsOn的设置是否构成了一个循环
+        RootBeanDefinition mbd = beanFactory.getMergedLocalBeanDefinition(beanName);
+        String[] dependsOn = mbd.getDependsOn();
+        for (String dep : dependsOn) {
+            // 为实例化对象注册依赖项
+            beanFactory.registerDependentBean(dep, beanName);
+            // 然后再实例化该依赖对象
+            getBean(dep);
+        }
+    }
+
+    /**
+     * Bean实例化：实例化前的准备以及实例化对象（单例）
      * 原型对象会在每次调用时实例一个对象，所以这里不讨论原型Bean的实例化
      *
      * @see AbstractApplicationContext#refresh()
@@ -228,22 +299,8 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         }
 
 
-        // 15. 实例化核心代码：getBean(beanName)
-        // 重头戏到了，说了这么多终于真正开始实例化
-        String beanName = "beanService";
-        // getBean() 核心逻辑 doGetBean()
-        Object doGetBean = this.beanFactory.doGetBean(beanName, null, null, false);
-        // 16. 获取规范的Bean名称，把可能是工厂对象的名称、或对象别名名称转为真正的BeanName（Component-value）
-        this.beanFactory.transformedBeanName(beanName);
-
-
-        // 17. 一级缓存
-        Object sharedInstance = this.beanFactory.getSingleton(beanName);
-        this.beanFactory.getSingleton(beanName, true);
-
         // 收尾工作
         finishRefresh();
-
 
         BeanService bean = getBean(BeanService.class);
         BeanService constructorBeanService = getBean("constructorBeanService", BeanService.class);
@@ -253,7 +310,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
     }
 
     /**
-     * 初始化：包扫描过程，通过注解扫描，然后注册至beanFactory
+     * IoC容器初始化：包扫描过程，通过注解扫描，然后注册至容器
      */
     public void processOfScan() throws IOException {
         // reader通过类型信息注册BeanDefinition
