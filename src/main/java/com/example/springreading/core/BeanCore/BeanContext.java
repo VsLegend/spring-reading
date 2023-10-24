@@ -4,6 +4,9 @@ import com.example.springreading.core.SpringFramework;
 import com.example.springreading.scanPackages.service.BeanService;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.ObjectFactory;
+import org.springframework.beans.factory.SmartFactoryBean;
 import org.springframework.beans.factory.annotation.*;
 import org.springframework.beans.factory.config.*;
 import org.springframework.beans.factory.support.*;
@@ -16,6 +19,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.core.metrics.StartupStep;
 import org.springframework.core.type.classreading.MetadataReader;
+import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
 
 import java.beans.Introspector;
@@ -34,6 +38,31 @@ public class BeanContext extends AnnotationConfigApplicationContext {
     private final Log logger = LogFactory.getLog(getClass());
     private final String[] basePackages = SpringFramework.basePackages;
 
+    private final SubDefaultListableBeanFactory beanFactory;
+
+    public BeanContext() {
+        beanFactory = new SubDefaultListableBeanFactory(getDefaultListableBeanFactory());
+    }
+
+    static class SubDefaultListableBeanFactory extends DefaultListableBeanFactory {
+
+        public SubDefaultListableBeanFactory(DefaultListableBeanFactory defaultListableBeanFactory) {
+            super(defaultListableBeanFactory);
+        }
+
+        public <T> T doGetBean(String name, @Nullable Class<T> requiredType, @Nullable Object[] args, boolean typeCheckOnly) throws BeansException {
+            return super.doGetBean(name, requiredType, args, typeCheckOnly);
+        }
+
+        public String transformedBeanName(String name) {
+            return super.transformedBeanName(name);
+        }
+
+        public Object getSingleton(String beanName, boolean allowEarlyReference) {
+            return super.getSingleton(beanName, allowEarlyReference);
+        }
+    }
+
     /**
      * Bean扫描、注册、实例化入口
      */
@@ -50,7 +79,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
 //        context();
         BeanContext beanContext = new BeanContext();
         beanContext.processOfScan();
-        beanContext.refresh();
+//        beanContext.refresh();
         beanContext.instantiateBean();
     }
 
@@ -63,8 +92,23 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(256);
         // BeanDefinition注册后置处理器
         List<BeanFactoryPostProcessor> beanFactoryPostProcessors = new ArrayList<>();
-        // BeanFactoryPostProcessor执行后，更新beanDefinitionMap内容的BeanDefinition容器
+        // BeanDefinition合并层级关系，将父子类实例分开，这里只保存最顶层的BeanDefinition，实例化时也是从最顶层开始实例化
         final Map<String, RootBeanDefinition> mergedBeanDefinitions = new ConcurrentHashMap<>(256);
+
+        final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
+
+        final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
+
+        final Map<String, Object> earlySingletonObjects = new ConcurrentHashMap<>(16);
+
+        final Set<String> registeredSingletons = new LinkedHashSet<>(256);
+
+        // Names of beans that are currently in creation.
+        final Set<String> singletonsCurrentlyInCreation =
+                Collections.newSetFromMap(new ConcurrentHashMap<>(16));
+        // Names of beans currently excluded from in creation checks.
+        final Set<String> inCreationCheckExclusions =
+                Collections.newSetFromMap(new ConcurrentHashMap<>(16));
     }
 
     /**
@@ -114,7 +158,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // - BeanDefinitionRegistryPostProcessors：1.实现PriorityOrdered的处理器、2.实现Ordered的处理器、3.剩余处理器
         // - BeanFactoryPostProcessors：4.实现PriorityOrdered的处理器、5.实现Ordered的处理器、6.剩余处理器
         // 6. 清理缓存
-        // 后置处理器执行完毕后，很多BeanDefinition的元数据都可能被修改，因此需要清理容器中缓存的相关Bean定义
+        // BeanFactory后置处理器执行完毕后，BeanDefinition的元数据有被修改的可能，因此需要清理容器中缓存的相关Bean定义
         beanFactory.clearMetadataCache();
 
 
@@ -147,18 +191,58 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // 10. 实例化
         // 这个方法会实例化所有非懒加载的类（当然，如果一个懒加载类被一个非懒加载类依赖，那么该类依旧会在这里被实例化）
         finishBeanFactoryInitialization(beanFactory);
-        // 11. 这里会将当前保存的beanDefinitionMap创建一个Key的副本，实例化时是对该副本中bean定义进行实例化
+        // 11. 冻结所有bean定义，已经注册的BeanDefinition不会被修改或处理
         beanFactory.freezeConfiguration();
-        // 执行Bean实例化方法
+        // 12. 执行Bean实例化方法
         beanFactory.preInstantiateSingletons();
-        // 12. 获取已注册的bean名字列表
+        // 13. 获取已注册的bean名字列表
         // beanFactory.beanDefinitionNames
-        // 5. 通过beanName得到关联的bean定义BeanDefinition
-        // RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
+        String[] beanNames = beanFactory.getBeanDefinitionNames();
+        // 14. 通过beanName得到关联的bean定义，同时将有层级关系的BeanDefinition合并为一个RootBeanDefinition
+        // 注意：通过直接扫描Java文件的Bean定义没有父子层级的说法，所有Bean定义都将被转为RootBeanDefinition
+        // 因为在Java文件中，解析后元数据（metadata）记录的层机关系很明确（extend、implement），实例化时不需要再根据Bean定义的层级关系来关联父类，它直接从元数据中拿就行
+        // 这一点与xml解析的Bean稍有不同，xml中有类似这种的标签来确定父类信息，<bean id="BeanName" class="Class" parent="parentBeanName">
+        for (String beanName : beanNames) {
+            // 这里的BeanDefinition是我们注册进容器的类：ScannedGenericBeanDefinition
+            BeanDefinition beanDefinition = beanFactory.getBeanDefinition(beanName);
+            // 这里构造器访问限制为包默认 RootBeanDefinition(BeanDefinition original)
+            RootBeanDefinition mbd = new RootBeanDefinition("beanDefinition");
+            // 创建完成后放进IoC容器的合并定义map中
+            BeanDefinition bd = beanFactory.getMergedBeanDefinition(beanName);
+            // 合并完成后，直接实例化
+            if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
+                // 有两种实例化方式，一个是通过对象工厂，一种是直接实例化
+                if (beanFactory.isFactoryBean(beanName)) {
+                    // 工厂模式实例化，需要先实例化这个工厂对象（FactoryBean），然后将实例化Bean的工作交给该工厂来完成。
+                    Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);
+                    // IoC容器不参与该Bean的实例化，除非这个工厂对象急切完成初始化，或期望初始化它的单例对象
+                    boolean isEagerInit = ((SmartFactoryBean<?>) bean).isEagerInit();
+                    if (isEagerInit) {
+                        getBean(beanName);
+                    }
+                } else {
+                    // 直接实例化
+                    getBean(beanName);
+                }
+            }
+        }
+
+
+        // 15. 实例化核心代码：getBean(beanName)
+        // 重头戏到了，说了这么多终于真正开始实例化
+        String beanName = "beanService";
+        // getBean() 核心逻辑 doGetBean()
+        Object doGetBean = this.beanFactory.doGetBean(beanName, null, null, false);
+        // 16. 获取规范的Bean名称，把可能是工厂对象的名称、或对象别名名称转为真正的BeanName（Component-value）
+        this.beanFactory.transformedBeanName(beanName);
+
+
+        // 17. 一级缓存
+        Object sharedInstance = this.beanFactory.getSingleton(beanName);
+        this.beanFactory.getSingleton(beanName, true);
 
         // 收尾工作
         finishRefresh();
-
 
 
         BeanService bean = getBean(BeanService.class);
@@ -202,7 +286,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // scanner.scopeMetadataResolver.resolveScopeMetadata(candidate)
         ScopeMetadataResolver scopeMetadataResolver = new AnnotationScopeMetadataResolver();
         ScopeMetadata scopeMetadata = scopeMetadataResolver.resolveScopeMetadata(beanDefinition);
-        // 读取注解
+        // 读取注解元数据
         AnnotatedBeanDefinition annDef = (AnnotatedBeanDefinition) beanDefinition;
         // AnnotationAttributes attributes = AnnotationConfigUtils.attributesFor(annDef.getMetadata(), Scope.class);
         // scopeMetadata.setScopeName(attributes.getString("value"));
