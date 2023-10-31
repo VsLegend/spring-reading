@@ -1,12 +1,12 @@
 package com.example.springreading.core.BeanCore;
 
 import com.example.springreading.core.SpringFramework;
+import com.example.springreading.core.beanFactory.SubDefaultListableBeanFactory;
 import com.example.springreading.scanPackages.service.BeanService;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.ObjectFactory;
-import org.springframework.beans.factory.SmartFactoryBean;
+import org.springframework.beans.factory.*;
 import org.springframework.beans.factory.annotation.*;
 import org.springframework.beans.factory.config.*;
 import org.springframework.beans.factory.support.*;
@@ -21,6 +21,7 @@ import org.springframework.core.metrics.StartupStep;
 import org.springframework.core.type.classreading.MetadataReader;
 import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.ObjectUtils;
 
 import java.beans.Introspector;
 import java.io.IOException;
@@ -44,29 +45,6 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         beanFactory = new SubDefaultListableBeanFactory(getDefaultListableBeanFactory());
     }
 
-    static class SubDefaultListableBeanFactory extends DefaultListableBeanFactory {
-
-        public SubDefaultListableBeanFactory(DefaultListableBeanFactory defaultListableBeanFactory) {
-            super(defaultListableBeanFactory);
-        }
-
-        public <T> T doGetBean(String name, @Nullable Class<T> requiredType, @Nullable Object[] args, boolean typeCheckOnly) throws BeansException {
-            return super.doGetBean(name, requiredType, args, typeCheckOnly);
-        }
-
-        public String transformedBeanName(String name) {
-            return super.transformedBeanName(name);
-        }
-
-        public Object getSingleton(String beanName, boolean allowEarlyReference) {
-            return super.getSingleton(beanName, allowEarlyReference);
-        }
-
-        public RootBeanDefinition getMergedLocalBeanDefinition(String beanName) throws BeansException{
-            return super.getMergedLocalBeanDefinition(beanName);
-        }
-    }
-
     /**
      * Bean扫描、注册、实例化入口
      */
@@ -80,11 +58,17 @@ public class BeanContext extends AnnotationConfigApplicationContext {
     }
 
     public static void main(String[] args) throws IOException {
+        // 完整的容器执行流程
 //        context();
         BeanContext beanContext = new BeanContext();
+        // 扫描流程
         beanContext.processOfScan();
+        // 完整的实例化流程
 //        beanContext.refresh();
+        // 容器上下文实例化流程
         beanContext.instantiateBean();
+        // IoC容器内部实例化流程
+        beanContext.getBeanCore();
     }
 
 
@@ -94,7 +78,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
     public void beanContainer() {
         // 注册到IoC容器中的原始BeanDefinition
         final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(256);
-        // BeanDefinition注册后置处理器
+        // BeanDefinition注册后处理器
         List<BeanFactoryPostProcessor> beanFactoryPostProcessors = new ArrayList<>();
         // BeanDefinition合并层级关系，将父子类实例分开，这里只保存最顶层的BeanDefinition，实例化时也是从最顶层开始实例化
         final Map<String, RootBeanDefinition> mergedBeanDefinitions = new ConcurrentHashMap<>(256);
@@ -111,25 +95,24 @@ public class BeanContext extends AnnotationConfigApplicationContext {
      * 实例化核心代码
      */
     public void getBeanCore() {
-        String beanName = "beanService";
+        String name = "beanService";
 
 
         // 1. 实例化核心代码：getBean(beanName)
         // getBean() 核心逻辑 doGetBean()
-        Object doGetBean = beanFactory.doGetBean(beanName, null, null, false);
+        Object doGetBean = beanFactory.doGetBean(name, null, null, false);
 
 
         // 2. 获取规范的Bean名称，把可能是工厂对象的名称、或对象别名名称转为真正的BeanName（@Component-value）
-        beanFactory.transformedBeanName(beanName);
+        String beanName = beanFactory.transformedBeanName(name);
 
 
-        // 3. 三级缓存
-        // 我们注册合并好的Bean定义，等待被实例化
+        // 3. 通过缓存获取实例
+        // 三级缓存
+        // 存放我们注册合并好的Bean定义
         final Map<String, RootBeanDefinition> mergedBeanDefinitions = new ConcurrentHashMap<>(256);
         // Bean实例缓存（已实例化）Cache of singleton objects: bean name to bean instance.
         final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
-        final Set<String> singletonsCurrentlyInCreation =
-                Collections.newSetFromMap(new ConcurrentHashMap<>(16));
         // Bean对象工厂实例缓存（已实例化）Cache of singleton factories: bean name to ObjectFactory.
         final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
         // Bean正在实例化缓存（实例化中）Cache of early singleton objects: bean name to bean instance.
@@ -169,22 +152,84 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         }
 
 
-        // 7. 先实例化依赖的组件（@DependsOn）
+        // 7. 从父级容器获取对象实例
+        // 在实例化自身容器内的Bean定义前，都会先尝试在父容器中获取该对象实例。存在时就直接返回父类中的对象实例了。
+        // 父类容器获取Bean实例的流程与当前流程一致
+        BeanFactory parentBeanFactory = getParentBeanFactory();
+        if (parentBeanFactory != null && parentBeanFactory.containsBean(beanName)) {
+            Object parentBeanFactoryBean = parentBeanFactory.getBean(beanName);
+        }
+
+        // 8. 先实例化依赖的组件（@DependsOn）
         // 要注意一下，如果两个或多个类之间，依赖的组件形成了一个循环，那么就会产生循环依赖问题。BeanCreationException
-        // 与属性依赖不同，组件之间的依赖是无法解决循环依赖的，所以需要注意@DependsOn的设置是否构成了一个循环
+        // 与属性依赖不同，组件之间的循环依赖是无法解决的，所以需要注意@DependsOn的设置是否构成了一个循环
         RootBeanDefinition mbd = beanFactory.getMergedLocalBeanDefinition(beanName);
         String[] dependsOn = mbd.getDependsOn();
-        for (String dep : dependsOn) {
-            // 为实例化对象注册依赖项
-            beanFactory.registerDependentBean(dep, beanName);
-            // 然后再实例化该依赖对象
-            getBean(dep);
+        if (!ObjectUtils.isEmpty(dependsOn)) {
+            for (String dep : dependsOn) {
+                // 为实例化对象注册依赖项
+                beanFactory.registerDependentBean(dep, beanName);
+                // 然后再实例化该依赖对象
+                getBean(dep);
+            }
         }
+
+        // 9. 创建实例
+        // 创建单例模式和原型模式的实例不同
+        // 单例模式：mbd.isSingleton()
+        // 这里为什么要定义一个对象工厂，而不是直接创建该对象的实例呢？这里后面提
+        // 这里有个前提，再次尝试从缓存中获取对象实例，假设多个线程都没获取到，同时执行创建实例的代码就会出现并发问题，使用该对象工厂就是为了确保该单例类不会被实例化多次
+        ObjectFactory<Object> singletonFactory = () -> {
+            try {
+                return beanFactory.createBean(beanName, mbd, null);
+            } catch (BeansException ex) {
+                //
+                beanFactory.destroySingleton(beanName);
+                throw ex;
+            }
+        };
+        sharedInstance = beanFactory.getSingleton(beanName, singletonFactory);
+        // 锁住实例容器，避免多线程并发问题
+        synchronized (singletonObjects) {
+            // 10. 一级缓存二次获取
+            singletonObject = singletonObjects.get(beanName);
+            // 11. 缓存仍然没有的话，就通过工厂创建实例
+            // 这期间将会维护两个容器
+            // Bean正在实例化中（实例化中） Names of beans that are currently in creation.
+            final Set<String> singletonsCurrentlyInCreation = Collections.newSetFromMap(new ConcurrentHashMap<>(16));
+            //（实例化中）Names of beans currently excluded from in creation checks.
+            final Set<String> inCreationCheckExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>(16));
+            // beforeSingletonCreation(beanName);
+            // 这里为什么要定义一个对象工厂，而不是直接创建该对象的实例呢？
+            singletonObject = singletonFactory.getObject();
+            // 12. 让我们来看看createBean方法做了什么吧
+            Object bean = beanFactory.resolveBeforeInstantiation(beanName, mbd);
+            Class<?> targetType = mbd.getTargetType();
+            // 13. 前面注册的后处理器在此处执行（BeanPostProcessor），包括实例化前、后的后处理器
+            if (targetType != null) {
+//                bean = beanFactory.applyBeanPostProcessorsBeforeInstantiation(targetType, beanName);
+                if (bean != null) {
+                    bean = beanFactory.applyBeanPostProcessorsAfterInitialization(bean, beanName);
+                }
+            }
+            // doCreateBean
+            Object beanInstance = beanFactory.doCreateBean(beanName, mbd, null);
+
+            // afterSingletonCreation(beanName);
+            // 12. 最后，将创建完的实例添加进缓存容器中，并删除中间缓存
+            beanFactory.addSingleton(beanName, singletonObject);
+
+        }
+
+
+        // 原型模式：mbd.isPrototype()
+
     }
 
     /**
      * Bean实例化：实例化前的准备以及实例化对象（单例）
      * 原型对象会在每次调用时实例一个对象，所以这里不讨论原型Bean的实例化
+     * Bean的生命周期：初始化 实例化
      *
      * @see AbstractApplicationContext#refresh()
      */
@@ -200,12 +245,12 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         prepareBeanFactory(beanFactory);
 
 
-        // 注册与执行后置处理器
+        // 注册与执行后处理器
         StartupStep beanPostProcess = getApplicationStartup().start("spring.context.beans.post-process");
 
 
-        // 3.注册与执行beanFactory容器后置处理器（BeanFactoryPostProcessor）
-        // 初始化完成后，为beanFactory设置后置处理器，做一些注册后实例化前的预处理操作，比如修改BeanDefinition内容、新注册BeanDefinition等等
+        // 3.注册与执行beanFactory容器后处理器（BeanFactoryPostProcessor）
+        // 初始化完成后，为beanFactory设置后处理器，做一些注册后实例化前的预处理操作，比如修改BeanDefinition内容、新注册BeanDefinition等等
         postProcessBeanFactory(beanFactory);
         // 这些BeanFactoryPostProcessor处理器不由注解容器（AnnotationConfigApplicationContext）实例化，一般通过配置类容器（ConfigurableApplicationContext）进行实例化
         ConfigurableApplicationContext configurableApplicationContext;
@@ -225,15 +270,15 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         addBeanFactoryPostProcessor(beanDefinitionRegistryPostProcessor);
         // 5. 执行
         invokeBeanFactoryPostProcessors(beanFactory);
-        // BeanFactoryPostProcessor后置处理器执行的先后顺序为：
+        // BeanFactoryPostProcessor后处理器执行的先后顺序为：
         // - BeanDefinitionRegistryPostProcessors：1.实现PriorityOrdered的处理器、2.实现Ordered的处理器、3.剩余处理器
         // - BeanFactoryPostProcessors：4.实现PriorityOrdered的处理器、5.实现Ordered的处理器、6.剩余处理器
         // 6. 清理缓存
-        // BeanFactory后置处理器执行完毕后，BeanDefinition的元数据有被修改的可能，因此需要清理容器中缓存的相关Bean定义
+        // BeanFactory后处理器执行完毕后，BeanDefinition的元数据有被修改的可能，因此需要清理容器中缓存的相关Bean定义
         beanFactory.clearMetadataCache();
 
 
-        // 7. 注册Bean后置处理器（BeanPostProcessor）
+        // 7. 注册Bean后处理器（BeanPostProcessor）
         // BeanFactoryPostProcessor能影响BeanDefinition，而BeanPostProcessor则能够影响BeanDefinition的实例化过程
         registerBeanPostProcessors(beanFactory);
         // BeanPostProcessor与普通BeanDefinition初始化方式是相同的，beanFactory容器将会自动检测BeanPostProcessor类型的单例类，并将其注册到容器中
@@ -244,18 +289,18 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // - ApplicationListenerDetector：为应用上下文注册事件监听器
         // - AutowiredAnnotationBeanPostProcessor：注入处理器，一般用来处理被@Autowired、@Value、@Inject注解的类，同时支持自定义注解
         BeanPostProcessor beanPostProcessor = new CommonAnnotationBeanPostProcessor();
-        // BeanPostProcessor后置处理器执行的先后顺序为：
+        // BeanPostProcessor后处理器执行的先后顺序为：
         // - BeanPostProcessor：1.实现PriorityOrdered的处理器、2.实现Ordered的处理器、3.剩余处理器
         // - MergedBeanDefinitionPostProcessor：4. MergedBeanDefinitionPostProcessor类型的处理器
         beanFactory.addBeanPostProcessor(beanPostProcessor);
-        // 9. 将上面处理器注册完成后，最后再注册一个后置处理器ApplicationListenerDetector
+        // 9. 将上面处理器注册完成后，最后再注册一个后处理器ApplicationListenerDetector
         // 该处理器用来检测ApplicationListener类型的Bean，在该Bean实例化完成后，将其添加到应用上下文（ApplicationContext）中的事件监听器（ApplicationListener）链中
         // 监听器这一节基本上与Bean实例化无关，监听器相关类后续再说
         // beanFactory.addBeanPostProcessor(new ApplicationListenerDetector(this));
         // 注意这里仅注册，相关的BeanPostProcessor类还没有实例化，也没法执行。
 
 
-        // 结束后置处理器操作
+        // 结束后处理器操作
         beanPostProcess.end();
 
 
@@ -292,7 +337,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
                         getBean(beanName);
                     }
                 } else {
-                    // 直接实例化
+                    // 获取实例化对象
                     getBean(beanName);
                 }
             }

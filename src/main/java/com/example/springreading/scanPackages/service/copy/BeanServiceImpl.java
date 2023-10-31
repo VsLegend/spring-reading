@@ -4,6 +4,9 @@ import com.example.springreading.scanPackages.service.BeanService;
 import org.springframework.context.annotation.*;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.ManagedBean;
+import javax.inject.Named;
+
 /**
  * 通过类型获取Bean且有多个Bean的类型相同，注入的依赖优先选择@Primary注解注释的，都没约@Primary注解就会报错
  *

@@ -1,4 +1,4 @@
-package com.example.springreading.core.postProcessors;
+package com.example.springreading.scanPackages.postProcessors;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.MutablePropertyValues;
