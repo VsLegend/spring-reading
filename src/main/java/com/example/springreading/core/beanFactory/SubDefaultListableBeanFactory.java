@@ -1,5 +1,6 @@
 package com.example.springreading.core.beanFactory;
 
+import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
@@ -48,5 +49,20 @@ public class SubDefaultListableBeanFactory extends DefaultListableBeanFactory {
 
     public Object doCreateBean(String beanName, RootBeanDefinition mbd, @Nullable Object[] args) {
         return super.doCreateBean(beanName, mbd, args);
+    }
+    public BeanWrapper createBeanInstance(String beanName, RootBeanDefinition mbd, @Nullable Object[] args) {
+        return super.createBeanInstance(beanName, mbd, args);
+    }
+
+    public void populateBean(String beanName, RootBeanDefinition mbd, @Nullable BeanWrapper bw) {
+        super.populateBean(beanName, mbd, bw);
+    }
+
+    public Object initializeBean(String beanName, Object bean, @Nullable RootBeanDefinition mbd){
+        return super.initializeBean(beanName, bean, mbd);
+    }
+
+    public void registerDisposableBeanIfNecessary(String beanName, Object bean, RootBeanDefinition mbd) {
+        super.registerDisposableBeanIfNecessary(beanName, bean, mbd);
     }
 }
