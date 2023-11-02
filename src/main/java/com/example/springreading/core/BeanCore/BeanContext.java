@@ -20,7 +20,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.core.metrics.StartupStep;
 import org.springframework.core.type.classreading.MetadataReader;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ObjectUtils;
 
@@ -67,9 +66,9 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // 完整的实例化流程
 //        beanContext.refresh();
         // 容器上下文实例化流程
-        beanContext.instantiateBean();
+        beanContext.instantiateBean1();
         // IoC容器内部实例化流程
-        beanContext.getBeanCore();
+        beanContext.instantiateBean2();
     }
 
 
@@ -95,7 +94,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
     /**
      * DefaultListableBeanFactory Bean实例化流程处理
      */
-    public void getBeanCore() {
+    public void instantiateBean2() {
         String name = "beanService";
         Object[] args = null;
 
@@ -180,8 +179,9 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // 9. 创建实例
         // 创建单例模式和原型模式的实例不同
         // 单例模式：mbd.isSingleton()
-        // 这里为什么要定义一个对象工厂，而不是直接创建该对象的实例呢？这里后面提
-        // 这里有个前提，再次尝试从缓存中获取对象实例，假设多个线程都没获取到，同时执行创建实例的代码就会出现并发问题，使用该对象工厂就是为了确保该单例类不会被实例化多次
+        // 这里为什么要定义一个对象工厂，而不是直接创建该对象的实例呢？
+        // 1. 实现懒加载，使用对象工厂封装真正的实例化方法，可以延迟创建Bean实例，只有查找或获取该Bean时，才会通过工厂对象执行实例化方法
+        // 2. 一定程度解决循环依赖，我们提到的三级缓存的第三级就是保存的这个对象工厂，由于可以延迟创建Bean实例，使用依赖的双方不必一开始就实例化
         ObjectFactory<Object> singletonFactory = () -> {
             try {
                 return beanFactory.createBean(beanName, mbd, args);
@@ -202,11 +202,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
             // 11. 缓存仍然没有的话，就通过工厂创建实例
             // 这期间将会维护两个缓存对象
             // Bean正在实例化中（实例化中） Names of beans that are currently in creation.
-            final Set<String> singletonsCurrentlyInCreation = Collections.newSetFromMap(new ConcurrentHashMap<>(16));
-            //（实例化中）Names of beans currently excluded from in creation checks.
-            final Set<String> inCreationCheckExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>(16));
             // beforeSingletonCreation(beanName);
-            // 这里为什么要定义一个对象工厂，而不是直接创建该对象的实例呢？
             bean = singletonFactory.getObject();
             // 12. createBean方法
             // beanFactory.createBean(beanName, mbd, null);
@@ -224,7 +220,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
 
 
             //  14. IoC容器自己创建实例 doCreateBean
-            Object beanInstance = beanFactory.doCreateBean(beanName, mbd, args);
+            bean = beanFactory.doCreateBean(beanName, mbd, args);
             // 包装类
             BeanWrapper instanceWrapper = beanFactory.createBeanInstance(beanName, mbd, args);
             bean = instanceWrapper.getWrappedInstance();
@@ -259,7 +255,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
      *
      * @see AbstractApplicationContext#refresh()
      */
-    public void instantiateBean() {
+    public void instantiateBean1() {
         // 从配置文件、xml、properties文件等持久化文件中，加载或刷新相关配置，如实例化对象
         // 1. 准备阶段
         // 每次加载或刷新配置时，需要刷新配置，以确保所有对象都能被顺利完整的实例化
@@ -268,8 +264,10 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // 当然AnnotationConfigApplicationContext内部的刷新代码没有任何清理操作，因为该应用上下文仅允许执行一次刷新和实例化操作，并且其内部仅维护了单例beanFactory，不需要对该容器进行清理
         // 有关清理的代码实现可以参考ClassPathXmlApplicationContext容器，它的清理逻辑在其父类AbstractRefreshableApplicationContext#refreshBeanFactory中实现
         ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
+        // 为IoC容器配置标准特征，比如ClassLoader和默认后置处理器。
         prepareBeanFactory(beanFactory);
-
+        // 这里实际上是应用上下文AnnotationConfigApplicationContext，在初始化beanFactory之后，对beanFactory作的一些后置处理
+        postProcessBeanFactory(beanFactory);
 
         // 注册与执行后处理器
         StartupStep beanPostProcess = getApplicationStartup().start("spring.context.beans.post-process");
@@ -277,7 +275,6 @@ public class BeanContext extends AnnotationConfigApplicationContext {
 
         // 3.注册与执行beanFactory容器后处理器（BeanFactoryPostProcessor）
         // 初始化完成后，为beanFactory设置后处理器，做一些注册后实例化前的预处理操作，比如修改BeanDefinition内容、新注册BeanDefinition等等
-        postProcessBeanFactory(beanFactory);
         // 这些BeanFactoryPostProcessor处理器一般通过配置类容器（ConfigurableApplicationContext）进行实例化
         ConfigurableApplicationContext configurableApplicationContext;
         List<BeanFactoryPostProcessor> beanFactoryPostProcessors = getBeanFactoryPostProcessors();
@@ -315,6 +312,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // - ApplicationListenerDetector：为应用上下文注册事件监听器
         // - AutowiredAnnotationBeanPostProcessor：注入处理器，一般用来处理被@Autowired、@Value、@Inject注解的类，同时支持自定义注解
         BeanPostProcessor beanPostProcessor = new CommonAnnotationBeanPostProcessor();
+
         // BeanPostProcessor后处理器执行的先后顺序为：
         // - BeanPostProcessor：1.实现PriorityOrdered的处理器、2.实现Ordered的处理器、3.剩余处理器
         // - MergedBeanDefinitionPostProcessor：4. MergedBeanDefinitionPostProcessor类型的处理器
@@ -382,6 +380,8 @@ public class BeanContext extends AnnotationConfigApplicationContext {
 
     /**
      * IoC容器初始化：包扫描过程，通过注解扫描，然后注册至容器
+     *
+     * @see AnnotationConfigApplicationContext#scan(String...)
      */
     public void processOfScan() throws IOException {
         // reader通过类型信息注册BeanDefinition

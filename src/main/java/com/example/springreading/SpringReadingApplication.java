@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 
-@ComponentScan(value = {"com.example.springreading.service",})
+@ComponentScan(value = {"com.example.springreading.scanPackages",})
 @SpringBootApplication(scanBasePackages = {"com.example.springreading",})
 public class SpringReadingApplication {
 
