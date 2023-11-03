@@ -4,9 +4,8 @@ import org.springframework.context.annotation.*;
 import org.springframework.stereotype.Component;
 
 /**
- * @Author Wang Junwei
- * @Date 2023/2/10 16:30
- * @Description
+ * @author Wang Junwei
+ * @date 2023/2/10 16:30
  */
 @Lazy
 @DependsOn

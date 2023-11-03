@@ -1,6 +1,8 @@
 package com.example.springreading.scanPackages.config;
 
-import com.example.springreading.scanPackages.postProcessors.ExtraPropertyPostProcessor;
+import com.example.springreading.scanPackages.postProcessors.BdRegistryBfPostProcessor;
+import com.example.springreading.scanPackages.postProcessors.FillPropertyBfPostProcessor;
+import com.example.springreading.scanPackages.service.pp.PostProcessorBeanServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,8 +15,29 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class Config {
 
-    @Bean("extraPropertyPostProcessor")
-    public ExtraPropertyPostProcessor processor() {
-        return new ExtraPropertyPostProcessor();
+
+    /**
+     * 注册Bean
+     * <p>
+     * 因为BeanFactoryPostProcessor（BFPP）对象必须在容器生命周期的早期进行实例化，
+     * 所以它们可能会干扰@Configuration类中的@Autowired、@Value和@PostConstruct等注释的处理。
+     * 为了避免这些生命周期问题，将返回bfpp的@Bean方法标记为静态。
+     *
+     * @return
+     * @see Bean
+     */
+    @Bean
+    public static BdRegistryBfPostProcessor bdRegistryBfPostProcessor() {
+        return new BdRegistryBfPostProcessor();
+    }
+
+    /**
+     * 修改注册好的Bean定义
+     * @return
+     * @see Bean
+     */
+    @Bean
+    public static FillPropertyBfPostProcessor fillPropertyBfPostProcessor() {
+        return new FillPropertyBfPostProcessor();
     }
 }

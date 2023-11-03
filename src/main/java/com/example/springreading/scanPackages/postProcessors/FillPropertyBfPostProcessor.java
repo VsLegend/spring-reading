@@ -1,0 +1,47 @@
+package com.example.springreading.scanPackages.postProcessors;
+
+import com.example.springreading.scanPackages.service.pp.PostProcessorBeanServiceImpl;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.MutablePropertyValues;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.core.Ordered;
+import org.springframework.core.PriorityOrdered;
+
+/**
+ * 填充字段
+ *
+ * @author Wang Junwei
+ * @date 2023/10/20 11:42
+ */
+public class FillPropertyBfPostProcessor implements BeanFactoryPostProcessor, Ordered {
+
+    private final Log logger = LogFactory.getLog(getClass());
+
+    @Override
+    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
+        String beanName = PostProcessorBeanServiceImpl.BPPP_BEAN_NAME;
+        String propertyName = "name";
+        try {
+            BeanDefinition bd = beanFactory.getBeanDefinition(beanName);
+            MutablePropertyValues propertyValues = bd.getPropertyValues();
+            if (!propertyValues.contains(propertyName)) {
+                propertyValues.add(propertyName, "BeanFactoryPostProcessor-Bean-Name");
+            }
+        } catch (NoSuchBeanDefinitionException ignore) {
+            logger.error("Bean not found : " + beanName);
+        }
+    }
+
+    @Override
+    public int getOrder() {
+        /**
+         * 最低优先级
+         */
+        return Ordered.LOWEST_PRECEDENCE;
+    }
+}

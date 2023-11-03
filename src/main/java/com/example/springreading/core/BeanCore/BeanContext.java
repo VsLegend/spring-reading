@@ -45,18 +45,6 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         beanFactory = new SubDefaultListableBeanFactory(getDefaultListableBeanFactory());
     }
 
-    /**
-     * Bean扫描、注册、实例化入口
-     */
-    public static void context() {
-        // spring通过两种方式自动扫描和管理bean： 1.注解扫描  2.xml配置扫描
-        // 1.注解扫描 @Component @Repository @Controller @Service等等Component注解
-        AnnotationConfigApplicationContext annotationConfigApplicationContext = new AnnotationConfigApplicationContext(SpringFramework.basePackages);
-
-        // 2.xml配置文件扫描 通过标签扫描
-        ClassPathXmlApplicationContext classPathXmlApplicationContext = new ClassPathXmlApplicationContext("/xml/bean.xml");
-    }
-
     public static void main(String[] args) throws IOException {
         // 完整的容器执行流程
 //        context();
@@ -69,6 +57,18 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         beanContext.instantiateBean1();
         // IoC容器内部实例化流程
         beanContext.instantiateBean2();
+    }
+
+    /**
+     * Bean扫描、注册、实例化入口
+     */
+    public static void context() {
+        // spring通过两种方式自动扫描和管理bean： 1.注解扫描  2.xml配置扫描
+        // 1.注解扫描 @Component @Repository @Controller @Service等等Component注解
+        AnnotationConfigApplicationContext annotationConfigApplicationContext = new AnnotationConfigApplicationContext(SpringFramework.basePackages);
+
+        // 2.xml配置文件扫描 通过标签扫描
+        ClassPathXmlApplicationContext classPathXmlApplicationContext = new ClassPathXmlApplicationContext("/xml/bean.xml");
     }
 
 
@@ -97,7 +97,6 @@ public class BeanContext extends AnnotationConfigApplicationContext {
     public void instantiateBean2() {
         String name = "beanService";
         Object[] args = null;
-
 
 
         // 1. 实例化核心代码：getBean(beanName)
@@ -283,14 +282,15 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // Spring内部BeanFactoryPostProcessor的实现类例子：
         // - CustomAutowireConfigurer：设置注入Bean的指定限定符（官方限定符注解@Qualifier）
         // - PropertySourcesPlaceholderConfigurer（5.2前PropertyPlaceholderConfigurer）：占位符替换，从property文件（yml）、环境变量、系统变量读取值，来替换Class文件代码中的${...}声明变量，例如处理@Value的内容
-        CustomAutowireConfigurer customAutowireConfigurer = new CustomAutowireConfigurer();
-        customAutowireConfigurer.setCustomQualifierTypes(Collections.singleton(Qualifier.class));
-        addBeanFactoryPostProcessor(customAutowireConfigurer);
-        addBeanFactoryPostProcessor(new PropertySourcesPlaceholderConfigurer());
+//        CustomAutowireConfigurer customAutowireConfigurer = new CustomAutowireConfigurer();
+//        customAutowireConfigurer.setCustomQualifierTypes(Collections.singleton(Qualifier.class));
+//        addBeanFactoryPostProcessor(customAutowireConfigurer);
+//        addBeanFactoryPostProcessor(new PropertySourcesPlaceholderConfigurer());
+//        addBeanFactoryPostProcessor(new FillPropertyPostProcessor());
         // BeanDefinitionRegistryPostProcessor将于BeanFactoryPostProcessor之前进行，它注册新的BeanDefinition或修改的BeanDefinition，最终可以影响到BeanFactoryPostProcessor的执行
         // - ConfigurationClassPostProcessor：处理@Configuration注解标注的类，并将其设置为配置类
         BeanDefinitionRegistryPostProcessor beanDefinitionRegistryPostProcessor = new ConfigurationClassPostProcessor();
-        addBeanFactoryPostProcessor(beanDefinitionRegistryPostProcessor);
+//        addBeanFactoryPostProcessor(beanDefinitionRegistryPostProcessor);
         // 5. 执行
         invokeBeanFactoryPostProcessors(beanFactory);
         // BeanFactoryPostProcessor后处理器执行的先后顺序为：
@@ -373,8 +373,10 @@ public class BeanContext extends AnnotationConfigApplicationContext {
 
         BeanService bean = getBean(BeanService.class);
         BeanService constructorBeanService = getBean("constructorBeanService", BeanService.class);
+        BeanService ppBeanService = getBean("ppBeanService", BeanService.class);
         logger.debug("Get Bean by type: " + bean.getName());
         logger.debug("Get Bean by name with type: " + constructorBeanService.getName());
+        logger.debug("Get Bean which is affected by BeanFactoryPostProcessor: " + ppBeanService.getName());
 
     }
 
