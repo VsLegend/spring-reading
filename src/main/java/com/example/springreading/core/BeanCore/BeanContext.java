@@ -290,7 +290,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // BeanDefinitionRegistryPostProcessor将于BeanFactoryPostProcessor之前进行，它注册新的BeanDefinition或修改的BeanDefinition，最终可以影响到BeanFactoryPostProcessor的执行
         // - ConfigurationClassPostProcessor：处理@Configuration注解标注的类，并将其设置为配置类
         BeanDefinitionRegistryPostProcessor beanDefinitionRegistryPostProcessor = new ConfigurationClassPostProcessor();
-//        addBeanFactoryPostProcessor(beanDefinitionRegistryPostProcessor);
+        addBeanFactoryPostProcessor(beanDefinitionRegistryPostProcessor);
         // 5. 执行
         invokeBeanFactoryPostProcessors(beanFactory);
         // BeanFactoryPostProcessor后处理器执行的先后顺序为：

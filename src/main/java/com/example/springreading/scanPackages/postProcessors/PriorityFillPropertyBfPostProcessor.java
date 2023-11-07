@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
  * @date 2023/10/20 11:42
  */
 @Component
-public class FillPropertyBfPostProcessor implements BeanFactoryPostProcessor, Ordered {
+public class PriorityFillPropertyBfPostProcessor implements BeanFactoryPostProcessor, PriorityOrdered {
 
     private final Log logger = LogFactory.getLog(getClass());
 
@@ -32,7 +32,7 @@ public class FillPropertyBfPostProcessor implements BeanFactoryPostProcessor, Or
             BeanDefinition bd = beanFactory.getBeanDefinition(beanName);
             MutablePropertyValues propertyValues = bd.getPropertyValues();
             if (!propertyValues.contains(propertyName)) {
-                propertyValues.add(propertyName, "Ordered-BeanFactoryPostProcessor");
+                propertyValues.add(propertyName, "PriorityOrdered-BeanFactoryPostProcessor");
             }
         } catch (NoSuchBeanDefinitionException ignore) {
             logger.error("Bean not found : " + beanName);
