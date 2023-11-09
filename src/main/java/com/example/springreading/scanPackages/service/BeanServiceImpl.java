@@ -8,9 +8,9 @@ import org.springframework.stereotype.Component;
  * @date 2023/2/10 16:30
  */
 @Lazy
-@DependsOn
-@Description(value = "Description of bean definition")
+@Primary
 @Component(value = "beanService")
+@Description(value = "Description of bean definition")
 @Scope(value = "singleton", proxyMode = ScopedProxyMode.DEFAULT)
 public class BeanServiceImpl implements BeanService {
 

@@ -26,7 +26,7 @@ public class PriorityFillPropertyBfPostProcessor implements BeanFactoryPostProce
 
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
-        String beanName = PostProcessorBeanServiceImpl.BPPP_BEAN_NAME;
+        String beanName = PostProcessorBeanServiceImpl.BEAN_NAME;
         String propertyName = "name";
         try {
             BeanDefinition bd = beanFactory.getBeanDefinition(beanName);
@@ -41,9 +41,6 @@ public class PriorityFillPropertyBfPostProcessor implements BeanFactoryPostProce
 
     @Override
     public int getOrder() {
-        /**
-         * 最低优先级
-         */
         return Ordered.LOWEST_PRECEDENCE;
     }
 }

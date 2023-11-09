@@ -3,6 +3,8 @@ package com.example.springreading.core.BeanCore;
 import com.example.springreading.core.SpringFramework;
 import com.example.springreading.core.beanFactory.SubDefaultListableBeanFactory;
 import com.example.springreading.scanPackages.service.BeanService;
+import com.example.springreading.scanPackages.service.pp.ConfigBeanServiceImpl;
+import com.example.springreading.scanPackages.service.pp.PostProcessorBeanServiceImpl;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.BeanWrapper;
@@ -15,7 +17,6 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.*;
 import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.core.metrics.StartupStep;
@@ -49,14 +50,25 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         // 完整的容器执行流程
 //        context();
         BeanContext beanContext = new BeanContext();
-        // 扫描流程
+        // 扫描和注册
         beanContext.processOfScan();
-        // 完整的实例化流程
-//        beanContext.refresh();
         // 容器上下文实例化流程
-        beanContext.instantiateBean1();
+        beanContext.instantiateInContext();
         // IoC容器内部实例化流程
-        beanContext.instantiateBean2();
+
+        // Bean获取示例
+        beanContext.getBeanExample();
+    }
+
+    private void getBeanExample() {
+        BeanService bean = getBean(BeanService.class);
+        BeanService constructorBeanService = getBean("constructorBeanService", BeanService.class);
+        BeanService ppBeanService = getBean(PostProcessorBeanServiceImpl.BEAN_NAME, BeanService.class);
+        BeanService configBean = getBean(ConfigBeanServiceImpl.BEAN_NAME, BeanService.class);
+        logger.debug("Get Bean by type: " + bean.getName());
+        logger.debug("Get Bean by name with type: " + constructorBeanService.getName());
+        logger.debug("Get Bean which is affected by BeanFactoryPostProcessor: " + ppBeanService.getName());
+        logger.debug("Get Bean in config: " + configBean.getName());
     }
 
     /**
@@ -71,30 +83,10 @@ public class BeanContext extends AnnotationConfigApplicationContext {
         ClassPathXmlApplicationContext classPathXmlApplicationContext = new ClassPathXmlApplicationContext("/xml/bean.xml");
     }
 
-
-    /**
-     * Bean的重要容器
-     */
-    public void beanContainer() {
-        // 注册到IoC容器中的原始BeanDefinition
-        final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(256);
-        // BeanDefinition注册后处理器
-        List<BeanFactoryPostProcessor> beanFactoryPostProcessors = new ArrayList<>();
-        // BeanDefinition合并层级关系，将父子类实例分开，这里只保存最顶层的BeanDefinition，实例化时也是从最顶层开始实例化
-        final Map<String, RootBeanDefinition> mergedBeanDefinitions = new ConcurrentHashMap<>(256);
-
-        final Set<String> registeredSingletons = new LinkedHashSet<>(256);
-
-        // Names of beans that are currently in creation.
-        final Set<String> singletonsCurrentlyInCreation = Collections.newSetFromMap(new ConcurrentHashMap<>(16));
-        // Names of beans currently excluded from in creation checks.
-        final Set<String> inCreationCheckExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>(16));
-    }
-
     /**
      * DefaultListableBeanFactory Bean实例化流程处理
      */
-    public void instantiateBean2() {
+    public void instantiateInIoC() {
         String name = "beanService";
         Object[] args = null;
 
@@ -254,7 +246,7 @@ public class BeanContext extends AnnotationConfigApplicationContext {
      *
      * @see AbstractApplicationContext#refresh()
      */
-    public void instantiateBean1() {
+    public void instantiateInContext() {
         // 从配置文件、xml、properties文件等持久化文件中，加载或刷新相关配置，如实例化对象
         // 1. 准备阶段
         // 每次加载或刷新配置时，需要刷新配置，以确保所有对象都能被顺利完整的实例化
@@ -289,8 +281,6 @@ public class BeanContext extends AnnotationConfigApplicationContext {
 //        addBeanFactoryPostProcessor(new FillPropertyPostProcessor());
         // BeanDefinitionRegistryPostProcessor将于BeanFactoryPostProcessor之前进行，它注册新的BeanDefinition或修改的BeanDefinition，最终可以影响到BeanFactoryPostProcessor的执行
         // - ConfigurationClassPostProcessor：处理@Configuration注解标注的类，并将其设置为配置类
-        BeanDefinitionRegistryPostProcessor beanDefinitionRegistryPostProcessor = new ConfigurationClassPostProcessor();
-        addBeanFactoryPostProcessor(beanDefinitionRegistryPostProcessor);
         // 5. 执行
         invokeBeanFactoryPostProcessors(beanFactory);
         // BeanFactoryPostProcessor后处理器执行的先后顺序为：
@@ -370,14 +360,6 @@ public class BeanContext extends AnnotationConfigApplicationContext {
 
         // 收尾工作
         finishRefresh();
-
-        BeanService bean = getBean(BeanService.class);
-        BeanService constructorBeanService = getBean("constructorBeanService", BeanService.class);
-        BeanService ppBeanService = getBean("ppBeanService", BeanService.class);
-        logger.debug("Get Bean by type: " + bean.getName());
-        logger.debug("Get Bean by name with type: " + constructorBeanService.getName());
-        logger.debug("Get Bean which is affected by BeanFactoryPostProcessor: " + ppBeanService.getName());
-
     }
 
     /**

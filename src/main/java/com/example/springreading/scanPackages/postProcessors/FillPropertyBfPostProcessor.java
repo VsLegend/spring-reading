@@ -10,7 +10,6 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.core.Ordered;
-import org.springframework.core.PriorityOrdered;
 import org.springframework.stereotype.Component;
 
 /**
@@ -26,14 +25,13 @@ public class FillPropertyBfPostProcessor implements BeanFactoryPostProcessor, Or
 
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
-        String beanName = PostProcessorBeanServiceImpl.BPPP_BEAN_NAME;
+        String beanName = PostProcessorBeanServiceImpl.BEAN_NAME;
         String propertyName = "name";
         try {
             BeanDefinition bd = beanFactory.getBeanDefinition(beanName);
             MutablePropertyValues propertyValues = bd.getPropertyValues();
-            if (!propertyValues.contains(propertyName)) {
-                propertyValues.add(propertyName, "Ordered-BeanFactoryPostProcessor");
-            }
+            // 这里直接覆盖高于当前优先级的BFPP
+            propertyValues.add(propertyName, "Ordered-BeanFactoryPostProcessor");
         } catch (NoSuchBeanDefinitionException ignore) {
             logger.error("Bean not found : " + beanName);
         }
@@ -41,9 +39,6 @@ public class FillPropertyBfPostProcessor implements BeanFactoryPostProcessor, Or
 
     @Override
     public int getOrder() {
-        /**
-         * 最低优先级
-         */
         return Ordered.LOWEST_PRECEDENCE;
     }
 }
