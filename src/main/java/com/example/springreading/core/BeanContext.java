@@ -1,6 +1,5 @@
-package com.example.springreading.core.BeanCore;
+package com.example.springreading.core;
 
-import com.example.springreading.core.SpringFramework;
 import com.example.springreading.core.beanFactory.SubDefaultListableBeanFactory;
 import com.example.springreading.scanPackages.service.BeanService;
 import com.example.springreading.scanPackages.service.pp.ConfigBeanServiceImpl;
@@ -341,9 +340,9 @@ public class BeanContext extends AnnotationConfigApplicationContext {
             BeanDefinition bd = beanFactory.getMergedBeanDefinition(beanName);
             // 合并完成后，直接实例化
             if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
-                // 有两种实例化方式，一个是通过对象工厂，一种是直接实例化
+                // 有两种实例化方式，一个是通过工厂对象，一种是直接实例化
                 if (beanFactory.isFactoryBean(beanName)) {
-                    // 工厂模式实例化，需要先实例化这个工厂对象（FactoryBean），然后将实例化Bean的工作交给该工厂来完成。
+                    // 工厂对象实例化，需要先实例化这个工厂对象（FactoryBean），然后将实例化Bean的工作交给该工厂来完成，相当于这个工厂对象将会生产两个实例对象。
                     Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);
                     // IoC容器不参与该Bean的实例化，除非这个工厂对象急切完成初始化，或期望初始化它的单例对象
                     boolean isEagerInit = ((SmartFactoryBean<?>) bean).isEagerInit();

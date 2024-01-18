@@ -1,4 +1,4 @@
-package com.example.springreading.scanPackages.postProcessors;
+package com.example.springreading.scanPackages.bfpp;
 
 import com.example.springreading.scanPackages.service.pp.PostProcessorBeanServiceImpl;
 import org.apache.commons.logging.Log;
@@ -10,6 +10,7 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.core.Ordered;
+import org.springframework.core.PriorityOrdered;
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,7 +20,7 @@ import org.springframework.stereotype.Component;
  * @date 2023/10/20 11:42
  */
 @Component
-public class FillPropertyBfPostProcessor implements BeanFactoryPostProcessor, Ordered {
+public class PriorityFillPropertyBfpp implements BeanFactoryPostProcessor, PriorityOrdered {
 
     private final Log logger = LogFactory.getLog(getClass());
 
@@ -30,8 +31,9 @@ public class FillPropertyBfPostProcessor implements BeanFactoryPostProcessor, Or
         try {
             BeanDefinition bd = beanFactory.getBeanDefinition(beanName);
             MutablePropertyValues propertyValues = bd.getPropertyValues();
-            // 这里直接覆盖高于当前优先级的BFPP
-            propertyValues.add(propertyName, "Ordered-BeanFactoryPostProcessor");
+            if (!propertyValues.contains(propertyName)) {
+                propertyValues.add(propertyName, "PriorityOrdered-BeanFactoryPostProcessor");
+            }
         } catch (NoSuchBeanDefinitionException ignore) {
             logger.error("Bean not found : " + beanName);
         }

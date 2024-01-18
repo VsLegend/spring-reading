@@ -1,7 +1,10 @@
 package com.example.springreading.scanPackages.service;
 
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.*;
 import org.springframework.stereotype.Component;
+
+import javax.annotation.Resource;
 
 /**
  * @author Wang Junwei

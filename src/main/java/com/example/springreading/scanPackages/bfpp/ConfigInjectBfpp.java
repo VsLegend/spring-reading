@@ -1,4 +1,4 @@
-package com.example.springreading.scanPackages.postProcessors;
+package com.example.springreading.scanPackages.bfpp;
 
 import com.example.springreading.scanPackages.service.pp.ConfigBeanServiceImpl;
 import org.apache.commons.logging.Log;
@@ -15,8 +15,6 @@ import org.springframework.context.annotation.ConfigurationClassPostProcessor;
 import org.springframework.core.Ordered;
 import org.springframework.core.PriorityOrdered;
 
-import static com.example.springreading.scanPackages.service.pp.PostProcessorBeanServiceImpl.BEAN_NAME;
-
 /**
  * 设置的优先级高于ConfigurationClassPostProcessor，
  * 但是又通过ConfigurationClassPostProcessor注册当前BFPP时
@@ -25,7 +23,7 @@ import static com.example.springreading.scanPackages.service.pp.PostProcessorBea
  * @date 2023/10/20 11:42
  * @see ConfigurationClassPostProcessor
  */
-public class ConfigInjectPostProcessor implements BeanDefinitionRegistryPostProcessor, PriorityOrdered {
+public class ConfigInjectBfpp implements BeanDefinitionRegistryPostProcessor, PriorityOrdered {
 
     private final Log logger = LogFactory.getLog(getClass());
 

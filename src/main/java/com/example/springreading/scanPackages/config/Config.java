@@ -1,6 +1,6 @@
 package com.example.springreading.scanPackages.config;
 
-import com.example.springreading.scanPackages.postProcessors.ConfigInjectPostProcessor;
+import com.example.springreading.scanPackages.bfpp.ConfigInjectBfpp;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,13 +17,13 @@ public class Config {
      * <p>
      * 因为BeanFactoryPostProcessor（BFPP）对象必须在容器生命周期的早期进行实例化，
      * 所以它们可能会干扰@Configuration类中的@Autowired、@Value和@PostConstruct等注释的处理。
-     * 为了避免这些生命周期问题，将返回bfpp的@Bean方法标记为静态。
+     * 为了避免这些生命周期问题，将返回bfpp的@Bean方法标记为静态，当然如果没有那可以不用。
      *
      * @return
      * @see Bean
      */
     @Bean
-    public static ConfigInjectPostProcessor configInjectPostProcessor() {
-        return new ConfigInjectPostProcessor();
+    public static ConfigInjectBfpp configInjectPostProcessor() {
+        return new ConfigInjectBfpp();
     }
 }
