@@ -1,5 +1,6 @@
 package com.example.springreading.scanPackages.config;
 
+import com.example.springreading.scanPackages.Bean.BeanNamePopulate;
 import com.example.springreading.scanPackages.bfpp.ConfigInjectBfpp;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,5 +26,10 @@ public class Config {
     @Bean
     public static ConfigInjectBfpp configInjectPostProcessor() {
         return new ConfigInjectBfpp();
+    }
+
+    @Bean(initMethod = "init", destroyMethod = "destroy")
+    public BeanNamePopulate beanNamePopulate() {
+        return new BeanNamePopulate();
     }
 }
