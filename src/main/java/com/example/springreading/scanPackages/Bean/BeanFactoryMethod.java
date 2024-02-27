@@ -8,7 +8,8 @@ import org.springframework.beans.factory.FactoryBean;
  */
 public class BeanFactoryMethod implements FactoryBean<Object> {
 
-    private BeanFactoryMethod() {}
+    private BeanFactoryMethod() {
+    }
 
     public BeanFactoryMethod createInstance() {
         return new BeanFactoryMethod();
