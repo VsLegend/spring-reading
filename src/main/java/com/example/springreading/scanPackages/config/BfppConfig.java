@@ -1,6 +1,5 @@
 package com.example.springreading.scanPackages.config;
 
-import com.example.springreading.scanPackages.Bean.BeanLifeCycleCallBack;
 import com.example.springreading.scanPackages.bfpp.ConfigInjectBfpp;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
  * @date 2023/11/2 17:37
  */
 @Configuration
-public class Config {
+public class BfppConfig {
     /**
      * 注册Bean
      * <p>
@@ -28,8 +27,4 @@ public class Config {
         return new ConfigInjectBfpp();
     }
 
-    @Bean(name = "BeanNamePopulate", initMethod = "init", destroyMethod = "destroy")
-    public BeanLifeCycleCallBack beanNamePopulate() {
-        return new BeanLifeCycleCallBack();
-    }
 }

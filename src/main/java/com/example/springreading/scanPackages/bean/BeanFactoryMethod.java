@@ -1,4 +1,4 @@
-package com.example.springreading.scanPackages.Bean;
+package com.example.springreading.scanPackages.bean;
 
 import org.springframework.beans.factory.FactoryBean;
 

@@ -1,4 +1,4 @@
-package com.example.springreading.scanPackages.Bean;
+package com.example.springreading.scanPackages.bean.singleLoadSequence;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
@@ -18,8 +18,8 @@ import javax.annotation.PostConstruct;
  * @date 2024/1/11 16:54
  */
 @Slf4j
-public class BeanLifeCycleCallBack implements ApplicationContextAware, BeanFactoryAware, BeanNameAware, InitializingBean {
-    public BeanLifeCycleCallBack() {
+public class BeanLifeCycle implements ApplicationContextAware, BeanFactoryAware, BeanNameAware, InitializingBean {
+    public BeanLifeCycle() {
         log.info("调用构造器");
     }
 

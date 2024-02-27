@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * @since 2024/2/2 16:26
  */
 @Slf4j
-@Component
+//@Component
 public class ExecSortOfBpp implements InstantiationAwareBeanPostProcessor {
 
 
