@@ -1,8 +1,6 @@
 package com.example.springreading.scanPackages.config;
 
 import com.example.springreading.scanPackages.bean.multipleLoadSequence.MultipleOrderService;
-import com.example.springreading.scanPackages.bean.multipleLoadSequence.Business2Service;
-import com.example.springreading.scanPackages.bean.multipleLoadSequence.Business3Service;
 import com.example.springreading.scanPackages.bean.multipleLoadSequence.OrderSwitch;
 import com.example.springreading.scanPackages.bean.singleLoadSequence.BeanLifeCycle;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
