@@ -22,7 +22,7 @@ public class SpringLoadSequenceConfig {
     /**
      * bean内部生命周期的调用顺序
      */
-//    @Bean(name = "BeanNamePopulate", initMethod = "init", destroyMethod = "destroy")
+    @Bean(name = "BeanNamePopulate", initMethod = "init", destroyMethod = "destroy")
     public BeanLifeCycle beanLifeCycle() {
         return new BeanLifeCycle();
     }

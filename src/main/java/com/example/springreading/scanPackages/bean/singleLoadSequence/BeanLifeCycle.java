@@ -10,6 +10,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
 /**
  * Bean生命周期回调执行顺序观察
@@ -25,11 +26,16 @@ public class BeanLifeCycle implements ApplicationContextAware, BeanFactoryAware,
 
     @PostConstruct
     public void postConstruct() {
-        log.info("调用PostConstruct");
+        log.info("调用@PostConstruct");
     }
 
     public void init() {
         log.info("调用init");
+    }
+
+    @PreDestroy
+    public void preDestroy() {
+        log.info("调用@PreDestroy");
     }
 
     public void destroy() {
